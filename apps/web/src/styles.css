@@ -398,7 +398,7 @@ h1, h2, h3 { line-height: 1.1; margin: 0; }
   display: flex;
   align-items: flex-end;
   gap: 28px;
-  margin: -1px -32px 36px;
+  margin: -28px -32px 36px;
   padding: 48px 32px 36px;
   background: linear-gradient(to bottom, var(--surface-2) 0%, transparent 100%);
   border-bottom: 1px solid var(--border);
