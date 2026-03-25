@@ -3,6 +3,8 @@ import type {
   AlbumListItem,
   CollectionDetail,
   SearchResult,
+  SeriesDetail,
+  SeriesListItem,
   TrackListItem,
 } from '@vgm/shared';
 
@@ -411,4 +413,66 @@ export async function addTracksToCollection(context: DatabaseContext, collection
   }
 
   return getCollectionDetail(context, collectionId);
+}
+
+export async function listSeries(context: DatabaseContext): Promise<SeriesListItem[]> {
+  const rows = all<Record<string, unknown>>(context, `
+    SELECT
+      s.*,
+      COUNT(sa.albumId) AS albumCount
+    FROM series s
+    LEFT JOIN seriesAlbums sa ON sa.seriesId = s.publicId
+    GROUP BY s.publicId
+    ORDER BY s.sortTitle ASC
+  `);
+
+  return rows.map((row) => ({
+    publicId: String(row.publicId),
+    name: String(row.name),
+    sortTitle: String(row.sortTitle),
+    albumCount: Number(row.albumCount ?? 0),
+  }));
+}
+
+export async function getSeriesDetail(context: DatabaseContext, seriesId: string): Promise<SeriesDetail | null> {
+  const seriesRow = get<Record<string, unknown>>(context, `
+    SELECT * FROM series WHERE publicId = ?
+  `, [seriesId]);
+
+  if (!seriesRow) {
+    return null;
+  }
+
+  const albumRows = all<Record<string, unknown>>(context, `
+    SELECT
+      a.*,
+      COUNT(at.trackId) AS trackCount,
+      COUNT(DISTINCT at.discNumber) AS discCount
+    FROM seriesAlbums sa
+    INNER JOIN albums a ON a.publicId = sa.albumId
+    LEFT JOIN albumTracks at ON at.albumId = a.publicId
+    WHERE sa.seriesId = ? AND a.hidden = 0
+    GROUP BY a.publicId
+    ORDER BY (sa.sortOrder IS NULL) ASC, sa.sortOrder ASC, a.sortTitle ASC, a.year ASC
+  `, [seriesId]);
+
+  const albums: AlbumListItem[] = albumRows.map((row) => {
+    const album = mapAlbum(row);
+    return {
+      publicId: album.publicId,
+      title: albumLabel(album),
+      albumArtist: albumArtistLabel(album),
+      year: album.year,
+      coverAssetId: album.coverAssetId,
+      trackCount: Number(row.trackCount ?? 0),
+      discCount: Number(row.discCount ?? 0),
+    };
+  });
+
+  return {
+    publicId: String(seriesRow.publicId),
+    name: String(seriesRow.name),
+    sortTitle: String(seriesRow.sortTitle),
+    albums,
+  };
 }

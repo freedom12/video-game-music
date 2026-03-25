@@ -14,6 +14,7 @@ import type {
   ImportProgressEvent,
   LibraryScanSummary,
   MediaAssetRecord,
+  SeriesRecord,
   SourceMeta,
   TrackRecord,
 } from '@vgm/shared';
@@ -23,10 +24,13 @@ import {
   buildCoverFileName,
   compareTrackOrder,
   makeAlbumKey,
+  makeSeriesKey,
   makeSourceKey,
   normalizeDisplayValue,
   normalizeRelativePath,
   normalizeSortTitle,
+  parseAlbumSortOrderInSeries,
+  parseSeriesFromPath,
   parseTagNumber,
 } from '@vgm/shared/normalization';
 
@@ -35,8 +39,7 @@ import {
   all,
   encodeJson,
   mapAlbum,
-  mapMediaAsset,
-  mapTrack,
+  mapMediaAsset,  mapSeries,  mapTrack,
   run,
   transaction,
 } from './db.js';
@@ -475,7 +478,44 @@ async function rebuildAlbums(context: DatabaseContext, options?: Pick<ImportOpti
     total: albumDocs.length,
   });
 
+  // 从专辑的 sourceDirectory 中提取系列信息
+  const seriesNameMap = new Map<string, string>(); // seriesKey → name
+  const seriesAlbumLinks: Array<{ seriesKey: string; albumId: string; sortOrder?: number }> = [];
+
+  for (const album of albumDocs) {
+    const seriesName = parseSeriesFromPath(album.sourceDirectory);
+    if (!seriesName) continue;
+
+    const seriesKey = makeSeriesKey(seriesName);
+    if (!seriesNameMap.has(seriesKey)) {
+      seriesNameMap.set(seriesKey, seriesName);
+    }
+
+    const sortOrder = parseAlbumSortOrderInSeries(album.sourceDirectory);
+    seriesAlbumLinks.push({ seriesKey, albumId: album.publicId, sortOrder });
+  }
+
+  const existingSeries = all<Record<string, unknown>>(context, 'SELECT * FROM series').map(mapSeries);
+  const existingSeriesMap = new Map(existingSeries.map((s) => [s.seriesKey, s]));
+
+  const seriesDocs: SeriesRecord[] = [];
+  for (const [seriesKey, name] of seriesNameMap) {
+    const existing = existingSeriesMap.get(seriesKey);
+    seriesDocs.push({
+      publicId: existing?.publicId ?? uuidv7(),
+      seriesKey,
+      name,
+      sortTitle: normalizeSortTitle(name),
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    });
+  }
+
+  const seriesIdMap = new Map(seriesDocs.map((s) => [s.seriesKey, s.publicId]));
+
   transaction(context, () => {
+    run(context, `DELETE FROM seriesAlbums`);
+    run(context, `DELETE FROM series`);
     run(context, `DELETE FROM albumTracks`);
     run(context, `DELETE FROM albums WHERE isSystemGenerated = 1`);
 
@@ -518,11 +558,39 @@ async function rebuildAlbums(context: DatabaseContext, options?: Pick<ImportOpti
         link.createdAt,
       ]);
     }
+
+    for (const series of seriesDocs) {
+      run(context, `
+        INSERT INTO series (publicId, seriesKey, name, sortTitle, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        series.publicId,
+        series.seriesKey,
+        series.name,
+        series.sortTitle,
+        series.createdAt,
+        series.updatedAt,
+      ]);
+    }
+
+    for (const link of seriesAlbumLinks) {
+      const seriesId = seriesIdMap.get(link.seriesKey);
+      if (!seriesId) continue;
+      run(context, `
+        INSERT INTO seriesAlbums (seriesId, albumId, sortOrder, createdAt)
+        VALUES (?, ?, ?, ?)
+      `, [
+        seriesId,
+        link.albumId,
+        link.sortOrder ?? null,
+        now,
+      ]);
+    }
   });
 
   reportProgress(options, {
     phase: 'rebuild',
-    message: `专辑重建完成：${albumDocs.length} 张专辑`,
+    message: `专辑重建完成：${albumDocs.length} 张专辑，${seriesDocs.length} 个系列`,
     processed: albumDocs.length,
     total: albumDocs.length,
   });

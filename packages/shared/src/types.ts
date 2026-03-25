@@ -99,6 +99,22 @@ export interface CollectionTrackRecord {
   createdAt: string;
 }
 
+export interface SeriesRecord {
+  publicId: string;
+  seriesKey: string;
+  name: string;
+  sortTitle: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SeriesAlbumRecord {
+  seriesId: string;
+  albumId: string;
+  sortOrder?: number;
+  createdAt: string;
+}
+
 export interface AlbumListItem {
   publicId: string;
   title: string;
@@ -132,6 +148,20 @@ export interface CollectionDetail {
   status: CollectionStatus;
   coverAssetId?: string;
   tracks: Array<TrackListItem & { albumId?: string; albumTitle?: string }>;
+}
+
+export interface SeriesListItem {
+  publicId: string;
+  name: string;
+  sortTitle: string;
+  albumCount: number;
+}
+
+export interface SeriesDetail {
+  publicId: string;
+  name: string;
+  sortTitle: string;
+  albums: AlbumListItem[];
 }
 
 export interface SearchResult {

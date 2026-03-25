@@ -8,6 +8,8 @@ import type {
   CollectionRecord,
   CollectionTrackRecord,
   MediaAssetRecord,
+  SeriesAlbumRecord,
+  SeriesRecord,
   SourceMeta,
   TrackRecord,
 } from '@vgm/shared';
@@ -124,10 +126,29 @@ async function connectDatabase(config: AppConfig): Promise<DatabaseContext> {
       PRIMARY KEY (collectionId, trackId)
     );
 
+    CREATE TABLE IF NOT EXISTS series (
+      publicId TEXT PRIMARY KEY,
+      seriesKey TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      sortTitle TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS seriesAlbums (
+      seriesId TEXT NOT NULL,
+      albumId TEXT NOT NULL,
+      sortOrder INTEGER,
+      createdAt TEXT NOT NULL,
+      PRIMARY KEY (seriesId, albumId)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_albums_sort ON albums(sortTitle, year);
     CREATE INDEX IF NOT EXISTS idx_album_tracks_album ON albumTracks(albumId, sortOrder);
     CREATE INDEX IF NOT EXISTS idx_collection_tracks_collection ON collectionTracks(collectionId, sortOrder);
     CREATE INDEX IF NOT EXISTS idx_media_assets_status ON mediaAssets(presenceStatus, syncStatus);
+    CREATE INDEX IF NOT EXISTS idx_series_albums_series ON seriesAlbums(seriesId, sortOrder);
+    CREATE INDEX IF NOT EXISTS idx_series_albums_album ON seriesAlbums(albumId);
   `);
 
   return { db };
@@ -286,6 +307,26 @@ export function mapCollectionTrack(row: Row): CollectionTrackRecord {
     collectionId: String(row.collectionId),
     trackId: String(row.trackId),
     sortOrder: Number(row.sortOrder ?? 0),
+    createdAt: String(row.createdAt),
+  };
+}
+
+export function mapSeries(row: Row): SeriesRecord {
+  return {
+    publicId: String(row.publicId),
+    seriesKey: String(row.seriesKey),
+    name: String(row.name),
+    sortTitle: String(row.sortTitle),
+    createdAt: String(row.createdAt),
+    updatedAt: String(row.updatedAt),
+  };
+}
+
+export function mapSeriesAlbum(row: Row): SeriesAlbumRecord {
+  return {
+    seriesId: String(row.seriesId),
+    albumId: String(row.albumId),
+    sortOrder: toNullableNumber(row.sortOrder),
     createdAt: String(row.createdAt),
   };
 }

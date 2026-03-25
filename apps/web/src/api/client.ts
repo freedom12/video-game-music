@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-import type { AlbumDetail, AlbumListItem, CollectionDetail, SearchResult, TrackRecord } from '@vgm/shared'
+import type { AlbumDetail, AlbumListItem, CollectionDetail, SearchResult, SeriesDetail, SeriesListItem, TrackRecord } from '@vgm/shared'
 
 export interface CollectionSummary {
   publicId: string
@@ -10,6 +10,8 @@ export interface CollectionSummary {
   coverAssetId?: string
   trackCount: number
 }
+
+export type { SeriesListItem, SeriesDetail }
 
 const api = axios.create({
   baseURL: '/api',
@@ -52,6 +54,16 @@ export async function searchCatalog(query: string) {
   const { data } = await api.get<SearchResult>('/search', {
     params: { q: query },
   })
+  return data
+}
+
+export async function fetchSeries() {
+  const { data } = await api.get<SeriesListItem[]>('/series')
+  return data
+}
+
+export async function fetchSeriesDetail(id: string) {
+  const { data } = await api.get<SeriesDetail>(`/series/${id}`)
   return data
 }
 

@@ -43,6 +43,36 @@ export function makeAlbumKey(album: string, albumArtist: string, year?: number):
   return `${normalizedArtist}::${normalizedAlbum}::${normalizedYear}`;
 }
 
+export function makeSeriesKey(seriesName: string): string {
+  return normalizeDisplayValue(seriesName).toLowerCase();
+}
+
+/**
+ * 从专辑的 sourceDirectory 路径中提取系列名（第一层文件夹名）。
+ * 例如 "Pokemon/01. Pokemon Red" → "Pokemon"
+ */
+export function parseSeriesFromPath(sourceDirectory: string | undefined): string | undefined {
+  if (!sourceDirectory) return undefined;
+  const segments = sourceDirectory.split('/');
+  return segments[0] || undefined;
+}
+
+/**
+ * 从专辑的 sourceDirectory 中提取该专辑在系列内的排序序号。
+ * 第二层文件夹若以 "XX." 开头（如 "01. Pokemon Red"），则提取 1 作为 sortOrder。
+ */
+export function parseAlbumSortOrderInSeries(sourceDirectory: string | undefined): number | undefined {
+  if (!sourceDirectory) return undefined;
+  const segments = sourceDirectory.split('/');
+  const albumSegment = segments.length >= 2 ? segments[1] : undefined;
+  if (!albumSegment) return undefined;
+
+  const match = /^(\d+)\.\s*/.exec(albumSegment);
+  if (!match) return undefined;
+
+  return Number.parseInt(match[1]!, 10);
+}
+
 export function parseTagNumber(value: string | number | undefined | null): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;

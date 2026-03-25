@@ -8,9 +8,11 @@ import {
   getAlbumDetail,
   getCollectionDetail,
   getDatabase,
+  getSeriesDetail,
   getTrackById,
   listAlbums,
   listCollections,
+  listSeries,
   loadConfig,
   patchAlbum,
   patchCollection,
@@ -152,6 +154,23 @@ export async function createApp() {
     }
 
     return collection;
+  });
+
+  app.get('/api/series', async () => {
+    const context = await getDatabase(config);
+    return listSeries(context);
+  });
+
+  app.get('/api/series/:id', async (request, reply) => {
+    const context = await getDatabase(config);
+    const series = await getSeriesDetail(context, (request.params as { id: string }).id);
+
+    if (!series) {
+      reply.code(404).send({ message: 'Series not found' });
+      return;
+    }
+
+    return series;
   });
 
   app.get('/api/search', async (request) => {
