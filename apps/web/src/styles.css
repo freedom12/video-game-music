@@ -135,8 +135,15 @@ h1, h2, h3 { line-height: 1.1; margin: 0; }
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 20px 32px 0;
+  padding: 16px 32px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  background: rgba(12, 12, 20, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
 }
 
 .topbar-search { width: 260px; }
@@ -391,8 +398,8 @@ h1, h2, h3 { line-height: 1.1; margin: 0; }
   display: flex;
   align-items: flex-end;
   gap: 28px;
-  margin: -28px -32px 36px;
-  padding: 52px 32px 36px;
+  margin: -1px -32px 36px;
+  padding: 48px 32px 36px;
   background: linear-gradient(to bottom, var(--surface-2) 0%, transparent 100%);
   border-bottom: 1px solid var(--border);
 }
