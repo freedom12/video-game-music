@@ -13,11 +13,18 @@
 
 ## 本地开发
 
-1. 复制 `.env.example` 为 `.env` 并按需修改
-2. 安装依赖：`pnpm install`
-3. 启动前后端：`pnpm dev`
+1. 复制 `.env.example` 为 `.env`
+2. 明确填写 `MEDIA_LIBRARY_ROOT`
+3. 安装依赖：`pnpm install`
+4. 启动前后端：`pnpm dev`
 
 默认 API 监听 `http://127.0.0.1:8787`，前端开发服务器监听 `http://localhost:5173`。SQLite 数据库默认写入 `./var/video-game-music.sqlite`，不依赖外部数据库服务。
+
+注意：
+
+- `.env` 文件不存在时，应用会直接报错退出
+- `MEDIA_LIBRARY_ROOT` 未配置时，应用会直接报错退出
+- 不再对本地音乐目录使用任何默认回退路径
 
 ## 资源导入
 

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { config as loadDotEnvFile } from 'dotenv';
 
 export interface AppConfig {
@@ -18,16 +19,41 @@ export interface AppConfig {
   onImportProgress?: (event: import('@vgm/shared').ImportProgressEvent) => void;
 }
 
+function resolveFromWorkspace(workspaceRoot: string, value: string | undefined, fallback: string) {
+  if (!value?.trim()) {
+    return fallback;
+  }
+
+  return path.isAbsolute(value) ? value : path.resolve(workspaceRoot, value);
+}
+
+function requireEnv(env: NodeJS.ProcessEnv, key: string) {
+  const value = env[key]?.trim();
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.cwd()): AppConfig {
   const workspaceRoot = resolveWorkspaceRoot(cwd);
+  const libraryRoot = requireEnv(env, 'MEDIA_LIBRARY_ROOT');
 
   return {
     apiPort: Number.parseInt(env.API_PORT ?? '8787', 10),
     workspaceRoot,
-    databasePath: env.DATABASE_PATH ?? path.join(workspaceRoot, 'var', 'video-game-music.sqlite'),
+    databasePath: resolveFromWorkspace(
+      workspaceRoot,
+      env.DATABASE_PATH,
+      path.join(workspaceRoot, 'var', 'video-game-music.sqlite'),
+    ),
     mediaSource: env.MEDIA_SOURCE === 'cos' ? 'cos' : 'local',
-    libraryRoot: env.MEDIA_LIBRARY_ROOT ?? 'F:\\wh\\音乐',
-    mediaCacheDir: env.MEDIA_CACHE_DIR ?? path.join(workspaceRoot, 'var', 'media-cache'),
+    libraryRoot: resolveFromWorkspace(workspaceRoot, libraryRoot, libraryRoot),
+    mediaCacheDir: resolveFromWorkspace(
+      workspaceRoot,
+      env.MEDIA_CACHE_DIR,
+      path.join(workspaceRoot, 'var', 'media-cache'),
+    ),
     adminToken: env.ADMIN_TOKEN?.trim() || undefined,
     cosBucket: env.COS_BUCKET?.trim() || undefined,
     cosRegion: env.COS_REGION?.trim() || undefined,
@@ -56,6 +82,12 @@ export function resolveWorkspaceRoot(start = process.cwd()): string {
 
 export function loadWorkspaceEnv(start = process.cwd()) {
   const workspaceRoot = resolveWorkspaceRoot(start);
-  loadDotEnvFile({ path: path.join(workspaceRoot, '.env') });
+  const envPath = path.join(workspaceRoot, '.env');
+
+  if (!fs.existsSync(envPath)) {
+    throw new Error(`Missing required environment file: ${envPath}`);
+  }
+
+  loadDotEnvFile({ path: envPath });
   return workspaceRoot;
 }
