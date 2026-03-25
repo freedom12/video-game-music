@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<{
   groupByDisc?: boolean
   coverAssetId?: string
 }>(), {
-  queueLabel: '播放队列',
+  queueLabel: '--',
   groupByDisc: false,
   coverAssetId: undefined,
 })

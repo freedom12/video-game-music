@@ -99,7 +99,7 @@ function toggleQueue() {
       </div>
       <div class="player-meta">
         <span class="player-title">{{ player.currentTrack?.title ?? '选择曲目开始播放' }}</span>
-        <span class="player-artist">{{ player.currentTrack?.artist ?? player.queueLabel }}</span>
+        <span class="player-artist">{{ player.currentTrack?.artist }}</span>
       </div>
     </div>
 
