@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "baseUrl": ".",
+    "paths": {
+      "@vgm/core": ["packages/core/src/index.ts"],
+      "@vgm/core/*": ["packages/core/src/*"],
+      "@vgm/shared": ["packages/shared/src/index.ts"],
+      "@vgm/shared/*": ["packages/shared/src/*"]
+    }
+  }
+}

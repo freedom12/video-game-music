@@ -1,0 +1,269 @@
+import fs from 'node:fs';
+
+import cors from '@fastify/cors';
+import {
+  addTracksToCollection,
+  commitLibrary,
+  createCollection,
+  getAlbumDetail,
+  getCollectionDetail,
+  getDatabase,
+  getTrackById,
+  listAlbums,
+  listCollections,
+  loadConfig,
+  patchAlbum,
+  patchCollection,
+  patchTrack,
+  resolveCoverAsset,
+  resolveTrackStream,
+  scanLibrary,
+  searchCatalog,
+  syncMediaToCos,
+} from '@vgm/core';
+import {
+  addCollectionTracksSchema,
+  createCollectionSchema,
+  patchAlbumSchema,
+  patchCollectionSchema,
+  patchTrackSchema,
+} from '@vgm/shared';
+import Fastify, { type FastifyReply } from 'fastify';
+import { v7 as uuidv7 } from 'uuid';
+
+const bytesPattern = /^bytes=(\d+)-(\d+)?$/;
+
+export async function createApp() {
+  const config = loadConfig(process.env, process.cwd());
+  const app = Fastify({
+    logger: true,
+  });
+
+  await app.register(cors, {
+    origin: true,
+  });
+
+  app.addHook('preHandler', async (request, reply) => {
+    if (!request.url.startsWith('/api/admin') || !config.adminToken) {
+      return;
+    }
+
+    const token = request.headers['x-admin-token'];
+    if (token !== config.adminToken) {
+      return reply.code(401).send({ message: 'Unauthorized' });
+    }
+  });
+
+  app.get('/api/health', async () => ({ ok: true }));
+
+  app.get('/api/albums', async () => {
+    const context = await getDatabase(config);
+    return listAlbums(context);
+  });
+
+  app.get('/api/albums/:id', async (request, reply) => {
+    const context = await getDatabase(config);
+    const album = await getAlbumDetail(context, (request.params as { id: string }).id);
+
+    if (!album) {
+      reply.code(404).send({ message: 'Album not found' });
+      return;
+    }
+
+    return album;
+  });
+
+  app.get('/api/albums/:id/tracks', async (request, reply) => {
+    const context = await getDatabase(config);
+    const album = await getAlbumDetail(context, (request.params as { id: string }).id);
+
+    if (!album) {
+      reply.code(404).send({ message: 'Album not found' });
+      return;
+    }
+
+    return album.tracks;
+  });
+
+  app.get('/api/tracks/:id', async (request, reply) => {
+    const context = await getDatabase(config);
+    const track = await getTrackById(context, (request.params as { id: string }).id);
+
+    if (!track) {
+      reply.code(404).send({ message: 'Track not found' });
+      return;
+    }
+
+    return track;
+  });
+
+  app.get('/api/tracks/:id/stream', async (request, reply) => {
+    const context = await getDatabase(config);
+    const stream = await resolveTrackStream(context, config, (request.params as { id: string }).id);
+
+    if (!stream) {
+      reply.code(404).send({ message: 'Track stream not found' });
+      return;
+    }
+
+    if (stream.mode === 'redirect') {
+      reply.redirect(stream.redirectUrl!);
+      return;
+    }
+
+    await streamLocalFile(reply, stream.filePath!, stream.mimeType || 'audio/mpeg', request.headers.range);
+  });
+
+  app.get('/api/assets/:id/cover', async (request, reply) => {
+    const context = await getDatabase(config);
+    const cover = await resolveCoverAsset(context, config, (request.params as { id: string }).id);
+
+    if (!cover) {
+      reply.code(404).send({ message: 'Cover not found' });
+      return;
+    }
+
+    if (cover.mode === 'redirect') {
+      reply.redirect(cover.redirectUrl!);
+      return;
+    }
+
+    reply.header('Content-Type', cover.mimeType || 'image/jpeg');
+    reply.send(fs.createReadStream(cover.filePath!));
+  });
+
+  app.get('/api/collections', async () => {
+    const context = await getDatabase(config);
+    return listCollections(context);
+  });
+
+  app.get('/api/collections/:id', async (request, reply) => {
+    const context = await getDatabase(config);
+    const collection = await getCollectionDetail(context, (request.params as { id: string }).id);
+
+    if (!collection) {
+      reply.code(404).send({ message: 'Collection not found' });
+      return;
+    }
+
+    return collection;
+  });
+
+  app.get('/api/search', async (request) => {
+    const context = await getDatabase(config);
+    const { q = '' } = request.query as { q?: string };
+    return searchCatalog(context, q);
+  });
+
+  app.post('/api/admin/import/scan', async () => {
+    const context = await getDatabase(config);
+    const result = await scanLibrary(context, {
+      libraryRoot: config.libraryRoot,
+      cacheDir: config.mediaCacheDir,
+    });
+    return result.summary;
+  });
+
+  app.post('/api/admin/import/commit', async () => {
+    const context = await getDatabase(config);
+    return commitLibrary(context, config);
+  });
+
+  app.post('/api/admin/sync/cos', async () => {
+    const context = await getDatabase(config);
+    return syncMediaToCos(context, config);
+  });
+
+  app.patch('/api/admin/albums/:id', async (request, reply) => {
+    const context = await getDatabase(config);
+    const input = patchAlbumSchema.parse(request.body);
+    const album = await patchAlbum(context, (request.params as { id: string }).id, input);
+
+    if (!album) {
+      reply.code(404).send({ message: 'Album not found' });
+      return;
+    }
+
+    return album;
+  });
+
+  app.patch('/api/admin/tracks/:id', async (request, reply) => {
+    const context = await getDatabase(config);
+    const input = patchTrackSchema.parse(request.body);
+    const track = await patchTrack(context, (request.params as { id: string }).id, input);
+
+    if (!track) {
+      reply.code(404).send({ message: 'Track not found' });
+      return;
+    }
+
+    return track;
+  });
+
+  app.post('/api/admin/collections', async (request) => {
+    const context = await getDatabase(config);
+    const input = createCollectionSchema.parse(request.body);
+
+    return createCollection(context, {
+      publicId: uuidv7(),
+      title: input.title,
+      description: input.description,
+      coverAssetId: input.coverAssetId,
+      status: input.status,
+    });
+  });
+
+  app.patch('/api/admin/collections/:id', async (request, reply) => {
+    const context = await getDatabase(config);
+    const input = patchCollectionSchema.parse(request.body);
+    const collection = await patchCollection(context, (request.params as { id: string }).id, input);
+
+    if (!collection) {
+      reply.code(404).send({ message: 'Collection not found' });
+      return;
+    }
+
+    return collection;
+  });
+
+  app.post('/api/admin/collections/:id/tracks', async (request) => {
+    const context = await getDatabase(config);
+    const input = addCollectionTracksSchema.parse(request.body);
+    return addTracksToCollection(context, (request.params as { id: string }).id, input.trackIds);
+  });
+
+  return app;
+}
+
+async function streamLocalFile(
+  reply: FastifyReply,
+  filePath: string,
+  mimeType: string,
+  rangeHeader: string | string[] | undefined,
+) {
+  const stat = await fs.promises.stat(filePath);
+  const fileSize = stat.size;
+  const headerValue = Array.isArray(rangeHeader) ? rangeHeader[0] : rangeHeader;
+
+  if (headerValue) {
+    const match = bytesPattern.exec(headerValue);
+
+    if (match) {
+      const start = Number.parseInt(match[1] ?? '0', 10);
+      const end = match[2] ? Number.parseInt(match[2], 10) : fileSize - 1;
+
+      reply.code(206);
+      reply.header('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+      reply.header('Accept-Ranges', 'bytes');
+      reply.header('Content-Length', end - start + 1);
+      reply.header('Content-Type', mimeType);
+      reply.send(fs.createReadStream(filePath, { start, end }));
+      return;
+    }
+  }
+
+  reply.header('Content-Length', fileSize);
+  reply.header('Content-Type', mimeType);
+  reply.header('Accept-Ranges', 'bytes');
+  reply.send(fs.createReadStream(filePath));
+}

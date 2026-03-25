@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+coverage
+.vite
+.turbo
+*.tsbuildinfo
+apps/web/node_modules
+apps/api/node_modules
+tools/media-importer/node_modules
+tools/media-sync/node_modules

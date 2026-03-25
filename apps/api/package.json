@@ -1,0 +1,21 @@
+{
+  "name": "@vgm/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
+    "start": "node dist/apps/api/src/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@vgm/core": "workspace:*",
+    "@vgm/shared": "workspace:*",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.4.0",
+    "uuid": "^11.1.0"
+  }
+}

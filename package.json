@@ -1,0 +1,25 @@
+{
+  "name": "video-game-music",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.12.4",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @vgm/api --filter @vgm/web dev",
+    "dev:web": "pnpm --filter @vgm/web dev",
+    "dev:api": "pnpm --filter @vgm/api dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "check": "pnpm -r typecheck",
+    "import:scan": "pnpm --filter @vgm/media-importer scan",
+    "import:commit": "pnpm --filter @vgm/media-importer commit",
+    "sync:cos": "pnpm --filter @vgm/media-sync sync"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^3.0.1",
+    "@types/node": "^24.0.10",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

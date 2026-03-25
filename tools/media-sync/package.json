@@ -1,0 +1,17 @@
+{
+  "name": "@vgm/media-sync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "tsx src/index.ts sync",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@vgm/core": "workspace:*",
+    "@vgm/shared": "workspace:*",
+    "dotenv": "^16.6.1"
+  }
+}
