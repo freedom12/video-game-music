@@ -642,10 +642,134 @@ h1, h2, h3 { line-height: 1.1; margin: 0; }
   min-width: 0;
 }
 
-.volume-icon { color: var(--text-3); flex-shrink: 0; }
+.volume-btn { color: var(--text-3); flex-shrink: 0; }
+.volume-btn:hover { color: var(--text); }
 
 .volume-slider { width: 90px; flex-shrink: 0; }
+.queue-toggle-btn { margin-left: 4px; }
+.queue-toggle-btn.active { color: var(--accent); background: var(--accent-dim); }
 
+/* ── Queue Panel ───────────────────────────── */
+.queue-panel {
+  position: fixed;
+  bottom: var(--player-h);
+  right: 0;
+  width: 360px;
+  max-height: 460px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 30;
+  overflow: hidden;
+}
+
+.queue-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.queue-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.queue-panel-count {
+  font-size: 0.72rem;
+  color: var(--text-3);
+}
+
+.queue-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px 0;
+}
+
+.queue-item {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 16px;
+  text-align: left;
+  color: var(--text-2);
+  border-radius: 0;
+  transition: background 120ms, color 120ms;
+}
+
+.queue-item:hover { background: var(--surface-2); color: var(--text); }
+
+.queue-item.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.queue-item-index {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center end;
+}
+
+.queue-item.active .queue-item-index { color: var(--accent); }
+
+.queue-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.queue-item-title {
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-item.active .queue-item-title { color: var(--accent); font-weight: 600; }
+
+.queue-item-artist {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-item-dur {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ── Queue slide transition ─────────────────── */
+.queue-slide-enter-active,
+.queue-slide-leave-active {
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms;
+}
+.queue-slide-enter-from,
+.queue-slide-leave-to {
+  transform: translateY(20px);
+  opacity: 0;
+}
 /* ── Admin ────────────────────────────────── */
 .admin-grid {
   display: grid;

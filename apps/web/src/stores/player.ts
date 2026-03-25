@@ -14,13 +14,22 @@ export const usePlayerStore = defineStore('player', () => {
   const isPlaying = ref(false)
   const currentTime = ref(0)
   const duration = ref(0)
+  const volume = ref(1)
+  const isMuted = ref(false)
 
   const currentTrack = computed(() => (
     currentIndex.value >= 0 ? queue.value[currentIndex.value] : undefined
   ))
 
+  function syncVolume() {
+    if (audio.value) {
+      audio.value.volume = isMuted.value ? 0 : volume.value
+    }
+  }
+
   function bindAudio(element: HTMLAudioElement) {
     audio.value = element
+    syncVolume()
     element.addEventListener('play', () => { isPlaying.value = true })
     element.addEventListener('pause', () => { isPlaying.value = false })
     element.addEventListener('timeupdate', () => {
@@ -28,6 +37,17 @@ export const usePlayerStore = defineStore('player', () => {
       duration.value = Number.isFinite(element.duration) ? element.duration : 0
     })
     element.addEventListener('ended', () => { void next() })
+  }
+
+  function setVolume(v: number) {
+    volume.value = Math.max(0, Math.min(1, v))
+    isMuted.value = false
+    syncVolume()
+  }
+
+  function toggleMute() {
+    isMuted.value = !isMuted.value
+    syncVolume()
   }
 
   async function playCurrent() {
@@ -82,15 +102,27 @@ export const usePlayerStore = defineStore('player', () => {
     queue,
     queueLabel,
     coverAssetId,
+    currentIndex,
     currentTrack,
     isPlaying,
     currentTime,
     duration,
+    volume,
+    isMuted,
     bindAudio,
     playQueue,
+    playAt: async (index: number) => {
+      if (index < 0 || index >= queue.value.length) return
+      currentIndex.value = index
+      currentTime.value = 0
+      duration.value = 0
+      await playCurrent()
+    },
     toggle,
     previous,
     next,
     seek,
+    setVolume,
+    toggleMute,
   }
 })

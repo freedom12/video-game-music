@@ -7,17 +7,27 @@ import type { AlbumDetail } from '@vgm/shared'
 
 import { fetchAlbum } from '../api/client'
 import TrackTable from '../components/TrackTable.vue'
+import { usePlayerStore } from '../stores/player'
 
 const route = useRoute()
 const loading = ref(true)
 const album = ref<AlbumDetail>()
 const loadError = ref('')
+const player = usePlayerStore()
 
 async function loadAlbum() {
   loading.value = true
   loadError.value = ''
   try {
     album.value = await fetchAlbum(route.params.id as string)
+    if (route.query.autoplay === '1' && album.value?.tracks?.length) {
+      await player.playQueue(
+        album.value.tracks,
+        0,
+        album.value.title,
+        album.value.coverAssetId,
+      )
+    }
   } catch (error) {
     album.value = undefined
     loadError.value = '专辑数据加载失败。'
