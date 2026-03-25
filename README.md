@@ -4,12 +4,12 @@
 
 ## 结构
 
-- `apps/web`: Vue 3 + Vite + Element Plus 前端
-- `apps/api`: Fastify API，负责目录浏览、搜索、播放流和后台接口
-- `packages/shared`: 共享类型、校验和纯函数
-- `packages/core`: SQLite、导入、媒体解析、COS 同步核心逻辑
-- `tools/media-importer`: 本地资源扫描与入库 CLI
-- `tools/media-sync`: 腾讯云 COS 同步 CLI
+- `apps/web`：Vue 3 + Vite + Element Plus 前端
+- `apps/api`：Fastify API，负责专辑、搜索、播放流和后台接口
+- `packages/shared`：共享类型、校验和纯函数
+- `packages/core`：SQLite、导入、媒体解析、COS 同步核心逻辑
+- `tools/media-importer`：本地资源入库 CLI
+- `tools/media-sync`：腾讯云 COS 同步 CLI
 
 ## 本地开发
 
@@ -17,12 +17,10 @@
 2. 安装依赖：`pnpm install`
 3. 启动前后端：`pnpm dev`
 
-默认 API 监听 `http://localhost:8787`，前端开发服务器监听 `http://localhost:5173`。
-SQLite 数据文件默认写入 `./var/video-game-music.sqlite`，不需要额外安装数据库服务。
+默认 API 监听 `http://127.0.0.1:8787`，前端开发服务器监听 `http://localhost:5173`。SQLite 数据库默认写入 `./var/video-game-music.sqlite`，不依赖外部数据库服务。
 
 ## 资源导入
 
-- 预览扫描：`pnpm import:scan`
 - 执行入库：`pnpm import:commit`
 - 上传 COS：`pnpm sync:cos`
 
