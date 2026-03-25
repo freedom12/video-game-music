@@ -204,6 +204,60 @@ h1, h2, h3 { line-height: 1.1; margin: 0; }
 /* ── Section ──────────────────────────────── */
 .content-section { margin-bottom: 44px; }
 
+/* ── Home Tabs ────────────────────────────── */
+.home-tabs {
+  --el-tabs-header-height: 42px;
+}
+
+.home-tabs .el-tabs__header {
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.home-tabs .el-tabs__nav-wrap::after {
+  display: none;
+}
+
+.home-tabs .el-tabs__active-bar {
+  background: var(--accent);
+  height: 2px;
+  border-radius: 2px;
+}
+
+.home-tabs .el-tabs__item {
+  color: var(--text-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0 16px;
+  height: 42px;
+  line-height: 42px;
+  transition: color 140ms;
+}
+
+.home-tabs .el-tabs__item:hover { color: var(--text); }
+.home-tabs .el-tabs__item.is-active { color: var(--accent); font-weight: 600; }
+
+.home-tab-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.home-tab-count {
+  font-size: 0.72rem;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.home-tabs .el-tabs__item.is-active .home-tab-count {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
 .section-header {
   display: flex;
   align-items: flex-end;

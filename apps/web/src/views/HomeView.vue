@@ -12,6 +12,7 @@ const loading = ref(true)
 const albums = ref<AlbumListItem[]>([])
 const collections = ref<CollectionSummary[]>([])
 const loadError = ref('')
+const activeTab = ref('albums')
 
 onMounted(async () => {
   loading.value = true
@@ -50,33 +51,44 @@ onMounted(async () => {
         style="margin-bottom:24px;border-radius:10px"
       />
 
-      <section class="content-section">
-        <div class="section-header">
-          <div>
-            <h2 class="section-title">专辑</h2>
+      <el-tabs v-model="activeTab" class="home-tabs">
+        <el-tab-pane label="专辑" name="albums">
+          <template #label>
+            <span class="home-tab-label">
+              <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="flex-shrink:0">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z"/>
+              </svg>
+              专辑
+              <span class="home-tab-count">{{ albums.length }}</span>
+            </span>
+          </template>
+          <div class="card-grid" style="padding-top:20px">
+            <AlbumCard v-for="album in albums" :key="album.publicId" :album="album" />
           </div>
-          <span class="section-count">共 {{ albums.length }} 张</span>
-        </div>
-        <div class="card-grid">
-          <AlbumCard v-for="album in albums" :key="album.publicId" :album="album" />
-        </div>
-      </section>
+        </el-tab-pane>
 
-      <section class="content-section">
-        <div class="section-header">
-          <div>
-            <h2 class="section-title">歌单</h2>
+        <el-tab-pane label="歌单" name="collections">
+          <template #label>
+            <span class="home-tab-label">
+              <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="flex-shrink:0">
+                <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+              </svg>
+              歌单
+              <span class="home-tab-count">{{ collections.length }}</span>
+            </span>
+          </template>
+          <div style="padding-top:20px">
+            <div v-if="collections.length" class="card-grid">
+              <CollectionCard
+                v-for="collection in collections"
+                :key="collection.publicId"
+                :collection="collection"
+              />
+            </div>
+            <el-empty v-else description="还没有主题歌单，可在管理页创建。" />
           </div>
-        </div>
-        <div v-if="collections.length" class="card-grid">
-          <CollectionCard
-            v-for="collection in collections"
-            :key="collection.publicId"
-            :collection="collection"
-          />
-        </div>
-        <el-empty v-else description="还没有主题歌单，可在管理页创建。" />
-      </section>
+        </el-tab-pane>
+      </el-tabs>
     </template>
   </el-skeleton>
 </template>
