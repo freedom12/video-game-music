@@ -36,6 +36,7 @@ import type { AppConfig } from './config.js';
 import {
   all,
   encodeJson,
+  get,
   mapAlbum,
   mapMediaAsset,  mapSeries,  mapTrack,
   run,
@@ -784,4 +785,77 @@ export async function computeFileHash(absolutePath: string) {
   });
 
   return hash.digest('hex');
+}
+
+export interface CleanSummary {
+  removedMissingAssets: number;
+  removedOrphanedTracks: number;
+  removedOrphanedCovers: number;
+}
+
+/** 删除 missing 状态的资产及其关联数据，并清理无对应专辑的封面缓存文件 */
+export async function cleanLibrary(context: DatabaseContext, config: AppConfig): Promise<CleanSummary> {
+  const removedMissingAssets = get<{ n: number }>(
+    context,
+    `SELECT COUNT(*) AS n FROM mediaAssets WHERE presenceStatus = 'missing'`,
+  )?.n ?? 0;
+
+  const removedOrphanedTracks = get<{ n: number }>(
+    context,
+    `SELECT COUNT(*) AS n FROM tracks
+     WHERE mediaAssetId IN (SELECT publicId FROM mediaAssets WHERE presenceStatus = 'missing')`,
+  )?.n ?? 0;
+
+  transaction(context, () => {
+    run(context, `DELETE FROM albumTracks WHERE trackId IN (
+      SELECT publicId FROM tracks
+      WHERE mediaAssetId IN (SELECT publicId FROM mediaAssets WHERE presenceStatus = 'missing')
+    )`);
+    run(context, `DELETE FROM collectionTracks WHERE trackId IN (
+      SELECT publicId FROM tracks
+      WHERE mediaAssetId IN (SELECT publicId FROM mediaAssets WHERE presenceStatus = 'missing')
+    )`);
+    run(context, `DELETE FROM tracks
+      WHERE mediaAssetId IN (SELECT publicId FROM mediaAssets WHERE presenceStatus = 'missing')`);
+    run(context, `DELETE FROM mediaAssets WHERE presenceStatus = 'missing'`);
+  });
+
+  // 删除没有对应专辑的封面缓存文件
+  const coversDir = path.join(config.mediaCacheDir, 'covers');
+  let removedOrphanedCovers = 0;
+  try {
+    const albumIds = new Set(
+      all<{ publicId: string }>(context, `SELECT publicId FROM albums`).map((a) => a.publicId),
+    );
+    const entries = await fs.readdir(coversDir);
+    for (const entry of entries) {
+      const ext = path.extname(entry).toLowerCase();
+      const id = path.basename(entry, ext);
+      if (['.png', '.jpg', '.jpeg', '.webp'].includes(ext) && !albumIds.has(id)) {
+        await fs.unlink(path.join(coversDir, entry));
+        removedOrphanedCovers++;
+      }
+    }
+  } catch { /* covers 目录不存在则跳过 */ }
+
+  return { removedMissingAssets, removedOrphanedTracks, removedOrphanedCovers };
+}
+
+/** 清空所有导入数据和封面缓存，然后进行完整重导入 */
+export async function initLibrary(context: DatabaseContext, config: AppConfig) {
+  transaction(context, () => {
+    run(context, `DELETE FROM seriesAlbums`);
+    run(context, `DELETE FROM series`);
+    run(context, `DELETE FROM albumTracks`);
+    run(context, `DELETE FROM albums WHERE isSystemGenerated = 1`);
+    run(context, `DELETE FROM collectionTracks`);
+    run(context, `DELETE FROM tracks`);
+    run(context, `DELETE FROM mediaAssets`);
+  });
+
+  const coversDir = path.join(config.mediaCacheDir, 'covers');
+  await fs.rm(coversDir, { recursive: true, force: true });
+  await fs.mkdir(coversDir, { recursive: true });
+
+  return commitLibrary(context, config);
 }

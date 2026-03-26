@@ -10,8 +10,10 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "check": "pnpm -r typecheck",
-    "import:commit": "pnpm --filter @vgm/media-importer commit",
-    "sync:cos": "pnpm --filter @vgm/media-sync sync"
+    "import:init": "pnpm --filter @vgm/media-importer run init",
+    "import:update": "pnpm --filter @vgm/media-importer run update",
+    "import:clean": "pnpm --filter @vgm/media-importer run clean",
+    "sync:cos": "pnpm --filter @vgm/media-sync run sync"
   },
   "devDependencies": {
     "@types/mime-types": "^3.0.1",

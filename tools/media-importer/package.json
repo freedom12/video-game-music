@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "commit": "tsx src/index.ts commit",
+    "init": "tsx src/index.ts init",
+    "update": "tsx src/index.ts update",
+    "clean": "tsx src/index.ts clean",
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"

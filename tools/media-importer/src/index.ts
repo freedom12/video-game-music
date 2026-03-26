@@ -1,4 +1,4 @@
-import { closeDatabase, commitLibrary, getDatabase, loadConfig, loadWorkspaceEnv } from '@vgm/core';
+import { cleanLibrary, closeDatabase, commitLibrary, getDatabase, initLibrary, loadConfig, loadWorkspaceEnv } from '@vgm/core';
 
 loadWorkspaceEnv(process.cwd());
 const config = loadConfig(process.env, process.cwd());
@@ -9,13 +9,23 @@ function formatImportProgress(event: import('@vgm/shared').ImportProgressEvent) 
   return `[import:${event.phase}]${progress}${elapsed} ${event.message}`;
 }
 
+const command = process.argv[2] ?? 'update';
+
 async function main() {
   const context = await getDatabase(config);
-  const summary = await commitLibrary(context, {
-    ...config,
-    onImportProgress: (event) => console.log(formatImportProgress(event)),
-  });
-  console.log(JSON.stringify(summary, null, 2));
+  const configWithProgress = { ...config, onImportProgress: (event: import('@vgm/shared').ImportProgressEvent) => console.log(formatImportProgress(event)) };
+
+  if (command === 'init') {
+    console.log('清空所有数据，开始完整重导入...');
+    const summary = await initLibrary(context, configWithProgress);
+    console.log(JSON.stringify(summary, null, 2));
+  } else if (command === 'clean') {
+    const summary = await cleanLibrary(context, config);
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    const summary = await commitLibrary(context, configWithProgress);
+    console.log(JSON.stringify(summary, null, 2));
+  }
 }
 
 main()
