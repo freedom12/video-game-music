@@ -8,11 +8,12 @@ describe('normalization helpers', () => {
   });
 
   it('creates stable source keys', () => {
-    expect(makeSourceKey('Pokémon/Disc 1/01 Test.MP3')).toBe('pokémon/disc 1/01 test.mp3');
+    expect(makeSourceKey('Game Freak', '  Pokémon OST  ', 1, 1, '  Pallet Town  ')).toBe('game freak::pokémon ost::1::1::pallet town');
+    expect(makeSourceKey('Game Freak', 'Pokémon OST', undefined, undefined, 'Pallet Town')).toBe('game freak::pokémon ost::0::0::pallet town');
   });
 
   it('creates album keys from normalized metadata', () => {
-    expect(makeAlbumKey('  Pokémon OST  ', 'Game Freak', 1998)).toBe('game freak::pokémon ost::1998');
+    expect(makeAlbumKey('  Pokémon OST  ', 'Game Freak')).toBe('game freak::pokémon ost');
   });
 
   it('parses track numbers from tag values', () => {

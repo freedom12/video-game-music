@@ -23,8 +23,19 @@ export function sanitizeSegment(value: string): string {
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-');
 }
 
-export function makeSourceKey(relativePath: string): string {
-  return toPosixPath(relativePath).toLowerCase();
+export function makeSourceKey(
+  albumArtist: string,
+  album: string,
+  discNumber: number | undefined,
+  trackNumber: number | undefined,
+  title: string,
+): string {
+  const normalizedArtist = normalizeDisplayValue(albumArtist).toLowerCase();
+  const normalizedAlbum = normalizeDisplayValue(album).toLowerCase();
+  const normalizedDisc = discNumber != null ? `${discNumber}` : '0';
+  const normalizedTrack = trackNumber != null ? `${trackNumber}` : '0';
+  const normalizedTitle = normalizeDisplayValue(title).toLowerCase();
+  return `${normalizedArtist}::${normalizedAlbum}::${normalizedDisc}::${normalizedTrack}::${normalizedTitle}`;
 }
 
 export function normalizeDisplayValue(value: string | undefined): string {
@@ -35,12 +46,11 @@ export function normalizeSortTitle(value: string): string {
   return normalizeDisplayValue(value).replace(sortablePrefixPattern, '').toLowerCase();
 }
 
-export function makeAlbumKey(album: string, albumArtist: string, year?: number): string {
+export function makeAlbumKey(album: string, albumArtist: string): string {
   const normalizedAlbum = normalizeDisplayValue(album).toLowerCase();
   const normalizedArtist = normalizeDisplayValue(albumArtist).toLowerCase();
-  const normalizedYear = year ? `${year}` : 'unknown-year';
 
-  return `${normalizedArtist}::${normalizedAlbum}::${normalizedYear}`;
+  return `${normalizedArtist}::${normalizedAlbum}`;
 }
 
 export function makeSeriesKey(seriesName: string): string {

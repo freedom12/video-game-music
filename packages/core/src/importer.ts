@@ -160,7 +160,6 @@ export async function scanLibrary(context: DatabaseContext, options: ImportOptio
   const albumKeys = new Set(candidates.map((candidate) => makeAlbumKey(
     candidate.metadata.album,
     candidate.metadata.albumArtist,
-    candidate.metadata.year,
   )));
 
   const summary: LibraryScanSummary = {
@@ -395,7 +394,7 @@ async function rebuildAlbums(context: DatabaseContext, options?: Pick<ImportOpti
   const groups = new Map<string, typeof activeTracks>();
 
   for (const track of activeTracks) {
-    const albumKey = makeAlbumKey(track.sourceMeta.album, track.sourceMeta.albumArtist, track.sourceMeta.year);
+    const albumKey = makeAlbumKey(track.sourceMeta.album, track.sourceMeta.albumArtist);
     const current = groups.get(albumKey);
     if (current) {
       current.push(track);
@@ -649,7 +648,7 @@ async function buildCandidate(libraryRoot: string, absolutePath: string): Promis
   return {
     absolutePath,
     relativePath,
-    sourceKey: makeSourceKey(relativePath),
+    sourceKey: makeSourceKey(albumArtist, album, discNumber, trackNumber, title),
     sourceDirectory: path.dirname(relativePath),
     fileSize: stat.size,
     modifiedAt: stat.mtime.toISOString(),
