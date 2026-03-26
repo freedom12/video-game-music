@@ -20,6 +20,7 @@ export async function syncMediaToCos(context: DatabaseContext, config: AppConfig
     SELECT *
     FROM mediaAssets
     WHERE presenceStatus = 'active'
+      AND syncStatus != 'synced'
   `).map(mapMediaAsset);
   const summary = {
     uploadedAudio: 0,

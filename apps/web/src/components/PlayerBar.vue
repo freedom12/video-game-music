@@ -91,8 +91,8 @@ function toggleQueue() {
     <div class="player-track">
       <div class="player-cover">
         <img
-          v-if="player.coverAssetId"
-          :src="`/api/assets/${player.coverAssetId}/cover`"
+          v-if="player.activeCoverUrl"
+          :src="player.activeCoverUrl"
           alt=""
         />
         <div v-else class="player-cover-fallback">🎵</div>

@@ -1,6 +1,8 @@
 import path from 'node:path';
 
 import COS from 'cos-nodejs-sdk-v5';
+import { parseFile } from 'music-metadata';
+import sharp from 'sharp';
 
 import type { AppConfig } from './config.js';
 import type { DatabaseContext } from './db.js';
@@ -59,6 +61,28 @@ export async function resolveCoverAsset(_context: DatabaseContext, config: AppCo
   }
 
   return null;
+}
+
+export async function resolveTrackEmbeddedCover(
+  context: DatabaseContext,
+  config: AppConfig,
+  trackId: string,
+): Promise<Buffer | null> {
+  const track = await getTrackById(context, trackId);
+  if (!track) return null;
+
+  const asset = await getMediaAssetById(context, track.mediaAssetId);
+  if (!asset || config.mediaSource !== 'local') return null;
+
+  const filePath = path.join(config.libraryRoot, ...asset.relativePath.split('/'));
+  const metadata = await parseFile(filePath, { skipCovers: false, duration: false });
+  const picture = metadata.common.picture?.[0];
+  if (!picture) return null;
+
+  return sharp(Buffer.from(picture.data))
+    .resize(512, 512, { fit: 'inside' })
+    .png()
+    .toBuffer();
 }
 
 async function resolveCosUrl(config: AppConfig, key?: string) {

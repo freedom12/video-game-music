@@ -14,6 +14,7 @@ export const usePlayerStore = defineStore('player', () => {
   const currentIndex = ref(-1)
   const queueLabel = ref(DEFAULT_QUEUE_LABEL)
   const coverAssetId = ref<string | undefined>()
+  const embeddedCoverUrl = ref<string | undefined>()
   const isPlaying = ref(false)
   const currentTime = ref(0)
   const duration = ref(0)
@@ -24,6 +25,13 @@ export const usePlayerStore = defineStore('player', () => {
   const currentTrack = computed(() => (
     currentIndex.value >= 0 ? queue.value[currentIndex.value] : undefined
   ))
+
+  const activeCoverUrl = computed(() =>
+    embeddedCoverUrl.value
+    ?? (coverAssetId.value ? `/api/assets/${coverAssetId.value}/cover` : undefined),
+  )
+
+  let coverFetchSeq = 0
 
   function syncVolume() {
     if (audio.value) {
@@ -58,8 +66,23 @@ export const usePlayerStore = defineStore('player', () => {
     const element = audio.value
     const track = currentTrack.value
     if (!element || !track) return
+    if (embeddedCoverUrl.value?.startsWith('blob:')) URL.revokeObjectURL(embeddedCoverUrl.value)
+    embeddedCoverUrl.value = undefined
     element.src = `/api/tracks/${track.publicId}/stream`
     await element.play()
+    const seq = ++coverFetchSeq
+    const trackId = track.publicId
+    void (async () => {
+      try {
+        const resp = await fetch(`/api/tracks/${trackId}/embedded-cover`)
+        if (seq !== coverFetchSeq || !resp.ok) return
+        const blob = await resp.blob()
+        if (seq !== coverFetchSeq) return
+        if (embeddedCoverUrl.value?.startsWith('blob:')) URL.revokeObjectURL(embeddedCoverUrl.value)
+        embeddedCoverUrl.value = URL.createObjectURL(blob)
+      }
+      catch { /* ignore */ }
+    })()
   }
 
   async function playQueue(
@@ -153,6 +176,7 @@ export const usePlayerStore = defineStore('player', () => {
     coverAssetId,
     currentIndex,
     currentTrack,
+    activeCoverUrl,
     isPlaying,
     currentTime,
     duration,

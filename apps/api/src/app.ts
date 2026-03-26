@@ -18,6 +18,7 @@ import {
   patchCollection,
   patchTrack,
   resolveCoverAsset,
+  resolveTrackEmbeddedCover,
   resolveTrackStream,
   searchCatalog,
   syncMediaToCos,
@@ -119,6 +120,18 @@ export async function createApp() {
     }
 
     return streamLocalFile(reply, stream.filePath!, stream.mimeType || 'audio/mpeg', request.headers.range);
+  });
+
+  app.get('/api/tracks/:id/embedded-cover', async (request, reply) => {
+    const context = await getDatabase(config);
+    const coverBuffer = await resolveTrackEmbeddedCover(context, config, (request.params as { id: string }).id);
+    if (!coverBuffer) {
+      reply.code(404).send({ message: 'No embedded cover' });
+      return;
+    }
+    reply.header('Content-Type', 'image/png');
+    reply.header('Cache-Control', 'public, max-age=86400');
+    return reply.send(coverBuffer);
   });
 
   app.get('/api/assets/:id/cover', async (request, reply) => {
