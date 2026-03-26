@@ -24,7 +24,6 @@ export async function syncMediaToCos(context: DatabaseContext, config: AppConfig
   `).map(mapMediaAsset);
   const summary = {
     uploadedAudio: 0,
-    uploadedCovers: 0,
     failed: 0,
   };
 
