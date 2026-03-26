@@ -15,7 +15,6 @@ export interface AppConfig {
   cosRegion?: string;
   cosSecretId?: string;
   cosSecretKey?: string;
-  cosBasePrefix: string;
   onImportProgress?: (event: import('@vgm/shared').ImportProgressEvent) => void;
 }
 
@@ -59,7 +58,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.c
     cosRegion: env.COS_REGION?.trim() || undefined,
     cosSecretId: env.COS_SECRET_ID?.trim() || undefined,
     cosSecretKey: env.COS_SECRET_KEY?.trim() || undefined,
-    cosBasePrefix: env.COS_BASE_PREFIX?.trim() || 'vgm',
   };
 }
 

@@ -27,12 +27,18 @@ export async function syncMediaToCos(context: DatabaseContext, config: AppConfig
     failed: 0,
   };
 
-  for (const asset of assets) {
+  const total = assets.length;
+  console.log(`待上传文件：${total} 个`);
+
+  for (const [index, asset] of assets.entries()) {
+    const prefix = `[${index + 1}/${total}]`;
     try {
       const localAudioPath = path.join(config.libraryRoot, ...asset.relativePath.split('/'));
-      const audioKey = joinCosKey(config.cosBasePrefix, 'audio', `${asset.publicId}${asset.extension}`);
+      const audioKey = `audio/${asset.publicId}${asset.extension}`;
 
+      process.stdout.write(`${prefix} 上传中 ${asset.relativePath} ...`);
       await uploadFile(client, config, localAudioPath, audioKey);
+      process.stdout.write(' ✓\n');
       summary.uploadedAudio += 1;
 
       run(context, `
@@ -41,21 +47,18 @@ export async function syncMediaToCos(context: DatabaseContext, config: AppConfig
         WHERE publicId = ?
       `, [new Date().toISOString(), asset.publicId]);
     } catch (error) {
+      process.stdout.write(' ✗\n');
       summary.failed += 1;
       run(context, `
         UPDATE mediaAssets
         SET syncStatus = 'failed', updatedAt = ?
         WHERE publicId = ?
       `, [new Date().toISOString(), asset.publicId]);
-      console.error(`Failed to sync ${asset.relativePath}:`, error);
+      console.error(`${prefix} 失败 ${asset.relativePath}:`, error);
     }
   }
 
   return summary;
-}
-
-function joinCosKey(prefix: string, category: string, name: string) {
-  return [prefix, category, name].filter(Boolean).join('/');
 }
 
 function uploadFile(client: COS, config: AppConfig, filePath: string, key: string) {
