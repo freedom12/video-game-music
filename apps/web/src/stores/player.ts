@@ -5,6 +5,9 @@ import type { TrackListItem } from '@vgm/shared'
 
 const DEFAULT_QUEUE_LABEL = '\u64ad\u653e\u961f\u5217'
 
+export type PlayMode = 'sequential' | 'repeat-all' | 'repeat-one' | 'shuffle'
+const PLAY_MODES: PlayMode[] = ['sequential', 'repeat-all', 'repeat-one', 'shuffle']
+
 export const usePlayerStore = defineStore('player', () => {
   const audio = ref<HTMLAudioElement | null>(null)
   const queue = ref<TrackListItem[]>([])
@@ -16,6 +19,7 @@ export const usePlayerStore = defineStore('player', () => {
   const duration = ref(0)
   const volume = ref(1)
   const isMuted = ref(false)
+  const playMode = ref<PlayMode>('sequential')
 
   const currentTrack = computed(() => (
     currentIndex.value >= 0 ? queue.value[currentIndex.value] : undefined
@@ -81,15 +85,60 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function previous() {
+    const len = queue.value.length
+    if (len === 0) return
+    if (playMode.value === 'repeat-one') {
+      if (audio.value) { audio.value.currentTime = 0; await audio.value.play() }
+      return
+    }
+    if (playMode.value === 'shuffle') {
+      if (len === 1) { if (audio.value) { audio.value.currentTime = 0; await audio.value.play() }; return }
+      let idx: number
+      do { idx = Math.floor(Math.random() * len) } while (idx === currentIndex.value)
+      currentIndex.value = idx
+      await playCurrent()
+      return
+    }
+    if (playMode.value === 'repeat-all') {
+      currentIndex.value = (currentIndex.value - 1 + len) % len
+      await playCurrent()
+      return
+    }
+    // sequential
     if (currentIndex.value <= 0) return
     currentIndex.value -= 1
     await playCurrent()
   }
 
   async function next() {
-    if (currentIndex.value >= queue.value.length - 1) return
+    const len = queue.value.length
+    if (len === 0) return
+    if (playMode.value === 'repeat-one') {
+      if (audio.value) { audio.value.currentTime = 0; await audio.value.play() }
+      return
+    }
+    if (playMode.value === 'shuffle') {
+      if (len === 1) { if (audio.value) { audio.value.currentTime = 0; await audio.value.play() }; return }
+      let idx: number
+      do { idx = Math.floor(Math.random() * len) } while (idx === currentIndex.value)
+      currentIndex.value = idx
+      await playCurrent()
+      return
+    }
+    if (playMode.value === 'repeat-all') {
+      currentIndex.value = (currentIndex.value + 1) % len
+      await playCurrent()
+      return
+    }
+    // sequential
+    if (currentIndex.value >= len - 1) return
     currentIndex.value += 1
     await playCurrent()
+  }
+
+  function toggleMode() {
+    const idx = PLAY_MODES.indexOf(playMode.value)
+    playMode.value = PLAY_MODES[(idx + 1) % PLAY_MODES.length] as PlayMode
   }
 
   function seek(ratio: number) {
@@ -124,5 +173,7 @@ export const usePlayerStore = defineStore('player', () => {
     seek,
     setVolume,
     toggleMute,
+    playMode,
+    toggleMode,
   }
 })
