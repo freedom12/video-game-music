@@ -33,6 +33,13 @@ function submitSearch() {
           <strong>VGM 曲库</strong>
         </div>
       </RouterLink>
+
+      <nav class="topbar-nav">
+        <RouterLink to="/series" class="topbar-nav-item">系列</RouterLink>
+        <RouterLink to="/albums" class="topbar-nav-item">专辑</RouterLink>
+        <RouterLink to="/collections" class="topbar-nav-item">歌单</RouterLink>
+      </nav>
+
       <el-input
         v-model="search"
         class="topbar-search"

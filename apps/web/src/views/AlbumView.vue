@@ -21,12 +21,16 @@ async function loadAlbum() {
   try {
     album.value = await fetchAlbum(route.params.id as string)
     if (route.query.autoplay === '1' && album.value?.tracks?.length) {
-      await player.playQueue(
-        album.value.tracks,
-        0,
-        album.value.title,
-        album.value.coverAssetId,
-      )
+      try {
+        await player.playQueue(
+          album.value.tracks,
+          0,
+          album.value.title,
+          album.value.coverAssetId,
+        )
+      } catch {
+        // 浏览器自动播放策略可能阻止刷新后的自动播放，忽略该错误
+      }
     }
   } catch (error) {
     album.value = undefined

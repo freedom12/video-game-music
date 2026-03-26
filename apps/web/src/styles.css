@@ -110,6 +110,35 @@ h1, h2, h3 { line-height: 1.1; margin: 0; }
   color: var(--text);
 }
 
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+
+.topbar-nav-item {
+  padding: 6px 20px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.topbar-nav-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+}
+
+.topbar-nav-item.router-link-active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .page-container {
   flex: 1;
   padding: 28px 32px 48px;
