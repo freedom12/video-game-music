@@ -105,5 +105,6 @@ async function resolveCosUrl(config: AppConfig, key?: string) {
     Region: config.cosRegion,
     Key: key,
     Sign: true,
+    Expires: 3600,
   });
 }

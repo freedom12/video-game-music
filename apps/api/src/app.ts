@@ -193,6 +193,7 @@ export async function createApp() {
     }
 
     if (stream.mode === 'redirect') {
+      reply.header('Cache-Control', 'private, max-age=3600');
       reply.redirect(stream.redirectUrl!);
       return;
     }
