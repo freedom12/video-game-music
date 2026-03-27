@@ -54,8 +54,12 @@ export async function createApp() {
   });
 
   app.addHook('preHandler', async (request, reply) => {
-    if (!request.url.startsWith('/api/admin') || !config.adminToken) {
+    if (!request.url.startsWith('/api/admin')) {
       return;
+    }
+
+    if (!config.adminToken) {
+      return reply.code(403).send({ message: 'Admin access is disabled: ADMIN_TOKEN is not configured' });
     }
 
     const token = request.headers['x-admin-token'];
