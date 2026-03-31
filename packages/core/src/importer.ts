@@ -22,7 +22,6 @@ import {
   SUPPORTED_AUDIO_EXTENSIONS,
   compareTrackOrder,
   makeAlbumKey,
-  makeSeriesKey,
   normalizeDisplayValue,
   normalizeRelativePath,
   normalizeSortTitle,
@@ -31,6 +30,8 @@ import {
   parseTagNumber,
 } from '@vgm/shared/normalization';
 
+import { extractAudioFeatures, hasAudioFeature, upsertAudioFeatureBatch } from './similarity.js';
+import type { AudioFeatureVectors } from './similarity.js';
 import type { AppConfig } from './config.js';
 import {
   all,
@@ -354,6 +355,89 @@ export async function commitLibrary(context: DatabaseContext, config: AppConfig)
     }
   });
 
+  // --- Audio feature extraction phase ---
+  // Only extract features for candidates that don't already have them
+  const candidatesNeedingFeatures: Array<{ assetId: string; absolutePath: string }> = [];
+  for (const candidate of uniqueCandidates) {
+    const existingAsset = assetMap.get(candidate.contentHash);
+    const assetId = existingAsset?.publicId ?? candidate.contentHash;
+    // Re-resolve assetId from DB since we may have just inserted it
+    const insertedAsset = get<{ publicId: string }>(context, `SELECT publicId FROM mediaAssets WHERE contentHash = ?`, [candidate.contentHash]);
+    if (insertedAsset && !hasAudioFeature(context, insertedAsset.publicId)) {
+      candidatesNeedingFeatures.push({ assetId: insertedAsset.publicId, absolutePath: candidate.absolutePath });
+    }
+  }
+
+  if (candidatesNeedingFeatures.length > 0) {
+    reportProgress(config, {
+      phase: 'features',
+      message: `开始提取音频特征，共 ${candidatesNeedingFeatures.length} 个文件`,
+      processed: 0,
+      total: candidatesNeedingFeatures.length,
+      elapsedMs: Date.now() - startedAt,
+    });
+
+    const FEATURE_CONCURRENCY = 8;
+    const FEATURE_BATCH_SIZE = 100;
+    let nextFeatureIndex = 0;
+    let featureCompleted = 0;
+    let featureSucceeded = 0;
+    const featureBatch: Array<{ mediaAssetId: string; features: AudioFeatureVectors }> = [];
+
+    function flushFeatureBatch() {
+      if (featureBatch.length === 0) return;
+      const toWrite = featureBatch.splice(0);
+      transaction(context, () => {
+        upsertAudioFeatureBatch(context, toWrite);
+      });
+    }
+
+    async function extractNextFeature() {
+      while (nextFeatureIndex < candidatesNeedingFeatures.length) {
+        const idx = nextFeatureIndex++;
+        const item = candidatesNeedingFeatures[idx]!;
+        try {
+          const features = await extractAudioFeatures(item.absolutePath);
+          featureBatch.push({ mediaAssetId: item.assetId, features });
+          featureSucceeded++;
+        } catch {
+          // skip files that fail feature extraction
+        }
+        featureCompleted++;
+
+        // Write batch to DB periodically to avoid losing progress on interruption
+        if (featureBatch.length >= FEATURE_BATCH_SIZE) {
+          flushFeatureBatch();
+        }
+
+        if (featureCompleted % 100 === 0 || featureCompleted === candidatesNeedingFeatures.length) {
+          reportProgress(config, {
+            phase: 'features',
+            message: `正在提取音频特征：${featureCompleted}/${candidatesNeedingFeatures.length}`,
+            processed: featureCompleted,
+            total: candidatesNeedingFeatures.length,
+            elapsedMs: Date.now() - startedAt,
+          });
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from({ length: Math.min(FEATURE_CONCURRENCY, candidatesNeedingFeatures.length) }, extractNextFeature),
+    );
+
+    // Write remaining batch
+    flushFeatureBatch();
+
+    reportProgress(config, {
+      phase: 'features',
+      message: `音频特征提取完成：${featureSucceeded}/${candidatesNeedingFeatures.length} 成功`,
+      processed: candidatesNeedingFeatures.length,
+      total: candidatesNeedingFeatures.length,
+      elapsedMs: Date.now() - startedAt,
+    });
+  }
+
   reportProgress(config, {
     phase: 'rebuild',
     message: '开始重建系统专辑集合',
@@ -508,31 +592,27 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
   });
 
   // 从专辑的 sourceDirectory 中提取系列信息
-  const seriesNameMap = new Map<string, string>(); // seriesKey → name
-  const seriesAlbumLinks: Array<{ seriesKey: string; albumId: string; sortOrder?: number }> = [];
+  const seriesNames = new Set<string>();
+  const seriesAlbumLinks: Array<{ seriesName: string; albumId: string; sortOrder?: number }> = [];
 
   for (const album of albumDocs) {
     const seriesName = parseSeriesFromPath(album.sourceDirectory);
     if (!seriesName) continue;
 
-    const seriesKey = makeSeriesKey(seriesName);
-    if (!seriesNameMap.has(seriesKey)) {
-      seriesNameMap.set(seriesKey, seriesName);
-    }
+    seriesNames.add(seriesName);
 
     const sortOrder = parseAlbumSortOrderInSeries(album.sourceDirectory);
-    seriesAlbumLinks.push({ seriesKey, albumId: album.publicId, sortOrder });
+    seriesAlbumLinks.push({ seriesName, albumId: album.publicId, sortOrder });
   }
 
   const existingSeries = all<Record<string, unknown>>(context, 'SELECT * FROM series').map(mapSeries);
-  const existingSeriesMap = new Map(existingSeries.map((s) => [s.seriesKey, s]));
+  const existingSeriesMap = new Map(existingSeries.map((s) => [s.name, s]));
 
   const seriesDocs: SeriesRecord[] = [];
-  for (const [seriesKey, name] of seriesNameMap) {
-    const existing = existingSeriesMap.get(seriesKey);
+  for (const name of seriesNames) {
+    const existing = existingSeriesMap.get(name);
     seriesDocs.push({
       publicId: existing?.publicId ?? uuidv7(),
-      seriesKey,
       name,
       sortTitle: normalizeSortTitle(name),
       createdAt: existing?.createdAt ?? now,
@@ -540,7 +620,7 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
     });
   }
 
-  const seriesIdMap = new Map(seriesDocs.map((s) => [s.seriesKey, s.publicId]));
+  const seriesIdMap = new Map(seriesDocs.map((s) => [s.name, s.publicId]));
 
   // Prepare statements once for all inserts
   const insertAlbumStmt = prepare(context, `
@@ -556,8 +636,8 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
   `);
 
   const insertSeriesStmt = prepare(context, `
-    INSERT INTO series (publicId, seriesKey, name, sortTitle, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO series (publicId, name, sortTitle, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?)
   `);
 
   const insertSeriesAlbumStmt = prepare(context, `
@@ -604,7 +684,6 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
     for (const series of seriesDocs) {
       insertSeriesStmt.run(
         series.publicId,
-        series.seriesKey,
         series.name,
         series.sortTitle,
         series.createdAt,
@@ -613,7 +692,7 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
     }
 
     for (const link of seriesAlbumLinks) {
-      const seriesId = seriesIdMap.get(link.seriesKey);
+      const seriesId = seriesIdMap.get(link.seriesName);
       if (!seriesId) continue;
       insertSeriesAlbumStmt.run(
         seriesId,

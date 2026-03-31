@@ -38,10 +38,6 @@ export function makeAlbumKey(album: string, albumArtist: string): string {
   return `${normalizedArtist}::${normalizedAlbum}`;
 }
 
-export function makeSeriesKey(seriesName: string): string {
-  return normalizeDisplayValue(seriesName).toLowerCase();
-}
-
 /**
  * 从专辑的 sourceDirectory 路径中提取系列名（第一层文件夹名）。
  * 例如 "Pokemon/01. Pokemon Red" → "Pokemon"

@@ -8,6 +8,7 @@ import type {
   SearchResult,
   SeriesDetail,
   SeriesListItem,
+  SimilarTrackItem,
   TrackRecord,
 } from '@vgm/shared'
 
@@ -62,4 +63,20 @@ export async function fetchSeries() {
 export async function fetchSeriesDetail(id: string) {
   const { data } = await api.get<SeriesDetail>(`/series/${id}`)
   return data
+}
+
+export interface SimilarTrackItemResponse extends SimilarTrackItem {
+  streamUrl: string
+  coverUrl?: string
+}
+
+export async function searchSimilar(file: File, limit = 20) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const { data } = await api.post<{ items: SimilarTrackItemResponse[] }>(
+    `/similarity/search?limit=${limit}`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+  return data.items
 }

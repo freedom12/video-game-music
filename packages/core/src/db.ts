@@ -119,8 +119,7 @@ async function connectDatabase(config: AppConfig): Promise<DatabaseContext> {
 
     CREATE TABLE IF NOT EXISTS series (
       publicId TEXT PRIMARY KEY,
-      seriesKey TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
+      name TEXT NOT NULL UNIQUE,
       sortTitle TEXT NOT NULL,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL
@@ -132,6 +131,15 @@ async function connectDatabase(config: AppConfig): Promise<DatabaseContext> {
       sortOrder INTEGER,
       createdAt TEXT NOT NULL,
       PRIMARY KEY (seriesId, albumId)
+    );
+
+    CREATE TABLE IF NOT EXISTS audioFeatures (
+      mediaAssetId TEXT PRIMARY KEY,
+      chromaVector BLOB NOT NULL,
+      mfccVector BLOB NOT NULL,
+      chromaStdVector BLOB,
+      mfccStdVector BLOB,
+      createdAt TEXT NOT NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_albums_sort ON albums(sortTitle, year);
@@ -315,7 +323,6 @@ export function mapCollectionTrack(row: Row): CollectionTrackRecord {
 export function mapSeries(row: Row): SeriesRecord {
   return {
     publicId: String(row.publicId),
-    seriesKey: String(row.seriesKey),
     name: String(row.name),
     sortTitle: String(row.sortTitle),
     createdAt: String(row.createdAt),

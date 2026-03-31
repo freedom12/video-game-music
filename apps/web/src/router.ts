@@ -7,6 +7,7 @@ import CollectionView from './views/CollectionView.vue'
 import SearchView from './views/SearchView.vue'
 import SeriesListView from './views/SeriesListView.vue'
 import SeriesView from './views/SeriesView.vue'
+import SimilarityView from './views/SimilarityView.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -19,6 +20,7 @@ export const router = createRouter({
     { path: '/collections', name: 'collections-list', component: CollectionListView },
     { path: '/collections/:id', name: 'collection', component: CollectionView },
     { path: '/search', name: 'search', component: SearchView },
+    { path: '/similarity', name: 'similarity', component: SimilarityView },
   ],
   scrollBehavior() {
     return { top: 0 }

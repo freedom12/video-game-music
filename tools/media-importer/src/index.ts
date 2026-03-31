@@ -1,4 +1,7 @@
-import { cleanLibrary, closeDatabase, commitLibrary, getDatabase, initLibrary, loadConfig, loadWorkspaceEnv } from '@vgm/core';
+import path from 'node:path';
+
+import { all, cleanLibrary, closeDatabase, commitLibrary, extractAudioFeatures, getDatabase, hasAudioFeature, initLibrary, loadConfig, loadWorkspaceEnv, transaction, upsertAudioFeatureBatch } from '@vgm/core';
+import type { AudioFeatureVectors } from '@vgm/core';
 
 loadWorkspaceEnv(process.cwd());
 const config = loadConfig(process.env, process.cwd());

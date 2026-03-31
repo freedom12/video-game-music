@@ -49,6 +49,7 @@ function submitSearch() {
         <RouterLink to="/series" class="topbar-nav-item">系列</RouterLink>
         <RouterLink to="/albums" class="topbar-nav-item">专辑</RouterLink>
         <RouterLink to="/collections" class="topbar-nav-item">歌单</RouterLink>
+        <RouterLink to="/similarity" class="topbar-nav-item">以曲搜曲</RouterLink>
       </nav>
 
       <el-input

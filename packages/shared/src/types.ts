@@ -90,7 +90,6 @@ export interface CollectionTrackRecord {
 
 export interface SeriesRecord {
   publicId: string;
-  seriesKey: string;
   name: string;
   sortTitle: string;
   createdAt: string;
@@ -218,7 +217,7 @@ export interface LibraryScanSummary {
 }
 
 export interface ImportProgressEvent {
-  phase: 'discover' | 'metadata' | 'write' | 'rebuild' | 'done';
+  phase: 'discover' | 'metadata' | 'write' | 'features' | 'rebuild' | 'done';
   message: string;
   processed?: number;
   total?: number;
@@ -280,4 +279,16 @@ export interface ApiErrorResponse {
   code: string;
   message: string;
   details?: unknown;
+}
+
+export interface SimilarTrackItem {
+  publicId: string;
+  title: string;
+  artist: string;
+  durationSeconds: number;
+  mediaAssetId: string;
+  albumId?: string;
+  albumTitle?: string;
+  albumArtist?: string;
+  similarityScore: number;
 }

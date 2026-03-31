@@ -1,9 +1,10 @@
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
 import { getDatabase, loadConfig, searchCatalog } from '@vgm/core';
 import type { AppError } from '@vgm/shared';
 import Fastify from 'fastify';
 
-import { albumRoutes, collectionRoutes, seriesRoutes, trackRoutes } from './routes/index.js';
+import { albumRoutes, collectionRoutes, seriesRoutes, similarityRoutes, trackRoutes } from './routes/index.js';
 
 function isAppError(error: unknown): error is AppError {
   return (
@@ -23,6 +24,10 @@ export async function createApp() {
 
   await app.register(cors, {
     origin: true,
+  });
+
+  await app.register(multipart, {
+    limits: { fileSize: 100 * 1024 * 1024 },
   });
 
   // --- Global error handler ---
@@ -75,6 +80,7 @@ export async function createApp() {
   await trackRoutes(app, routeContext);
   await collectionRoutes(app, routeContext);
   await seriesRoutes(app, routeContext);
+  await similarityRoutes(app, routeContext);
 
   return app;
 }

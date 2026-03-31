@@ -3,6 +3,7 @@ export * from './config.js';
 export * from './db.js';
 export * from './importer.js';
 export * from './media.js';
+export * from './similarity.js';
 export * from './storage.js';
 export * from './storage-cos.js';
 export * from './storage-local.js';

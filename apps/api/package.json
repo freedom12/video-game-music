@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
+    "@fastify/multipart": "^9.4.0",
     "@vgm/core": "workspace:*",
     "@vgm/shared": "workspace:*",
     "dotenv": "^16.6.1",
