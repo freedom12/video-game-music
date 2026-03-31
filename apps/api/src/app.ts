@@ -1,10 +1,9 @@
 import cors from '@fastify/cors';
-import { loadConfig } from '@vgm/core';
+import { getDatabase, loadConfig, searchCatalog } from '@vgm/core';
 import type { AppError } from '@vgm/shared';
-import { ForbiddenError, UnauthorizedError } from '@vgm/shared';
 import Fastify from 'fastify';
 
-import { adminRoutes, albumRoutes, collectionRoutes, seriesRoutes, trackRoutes } from './routes/index.js';
+import { albumRoutes, collectionRoutes, seriesRoutes, trackRoutes } from './routes/index.js';
 
 function isAppError(error: unknown): error is AppError {
   return (
@@ -61,25 +60,14 @@ export async function createApp() {
     });
   });
 
-  // --- Admin auth hook ---
-  app.addHook('preHandler', async (request, reply) => {
-    if (!request.url.startsWith('/api/admin')) {
-      return;
-    }
-
-    if (!config.adminToken) {
-      throw new ForbiddenError('Admin access is disabled: ADMIN_TOKEN is not configured');
-    }
-
-    const token = request.headers['x-admin-token'];
-    if (token !== config.adminToken) {
-      throw new UnauthorizedError();
-    }
-  });
-
   // --- System routes ---
   app.get('/api/health', async () => ({ ok: true }));
   app.get('/api/media-source', async () => ({ source: config.mediaSource }));
+  app.get('/api/search', async (request) => {
+    const context = await getDatabase(config);
+    const { q = '' } = request.query as { q?: string };
+    return searchCatalog(context, q);
+  });
 
   // --- Domain routes ---
   const routeContext = { config };
@@ -87,7 +75,6 @@ export async function createApp() {
   await trackRoutes(app, routeContext);
   await collectionRoutes(app, routeContext);
   await seriesRoutes(app, routeContext);
-  await adminRoutes(app, routeContext);
 
   return app;
 }

@@ -170,15 +170,6 @@ vi.mock('@vgm/core', () => {
     ),
 
     searchCatalog: vi.fn(async () => mockSearchResult),
-
-    // admin stubs (unused in public-API tests but required for import resolution)
-    commitLibrary: vi.fn(),
-    uploadMediaToCos: vi.fn(),
-    patchAlbum: vi.fn(),
-    patchTrack: vi.fn(),
-    createCollection: vi.fn(),
-    patchCollection: vi.fn(),
-    addTracksToCollection: vi.fn(),
   };
 });
 

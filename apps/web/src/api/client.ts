@@ -17,14 +17,6 @@ const api = axios.create({
   baseURL: '/api',
 })
 
-api.interceptors.request.use((config) => {
-  const token = window.localStorage.getItem('vgm-admin-token')
-  if (token) {
-    config.headers['x-admin-token'] = token
-  }
-  return config
-})
-
 export async function fetchMediaSource(): Promise<'local' | 'cos'> {
   const { data } = await api.get<{ source: 'local' | 'cos' }>('/media-source')
   return data.source
@@ -69,29 +61,5 @@ export async function fetchSeries() {
 
 export async function fetchSeriesDetail(id: string) {
   const { data } = await api.get<SeriesDetail>(`/series/${id}`)
-  return data
-}
-
-export async function commitLibrary() {
-  const { data } = await api.post('/admin/import/commit')
-  return data
-}
-
-export async function syncCos() {
-  const { data } = await api.post('/admin/sync/cos')
-  return data
-}
-
-export async function createCollection(payload: {
-  title: string
-  description?: string
-  status: 'draft' | 'published'
-}) {
-  const { data } = await api.post('/admin/collections', payload)
-  return data
-}
-
-export async function addTracksToCollection(collectionId: string, trackIds: string[]) {
-  const { data } = await api.post(`/admin/collections/${collectionId}/tracks`, { trackIds })
   return data
 }

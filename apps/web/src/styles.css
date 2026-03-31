@@ -820,30 +820,6 @@ h1, h2, h3 { line-height: 1.1; margin: 0; }
   transform: translateY(20px);
   opacity: 0;
 }
-/* ── Admin ────────────────────────────────── */
-.admin-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
-}
-
-.admin-actions, .admin-toolbar { display: flex; flex-wrap: wrap; gap: 12px; }
-.admin-action { margin-top: 12px; }
-
-.admin-output {
-  overflow: auto;
-  padding: 16px;
-  border-radius: 12px;
-  background: #060610;
-  color: #e2e8f0;
-  font-size: 0.85rem;
-  border: 1px solid var(--border);
-  margin: 0;
-}
-
-.admin-results { display: flex; flex-direction: column; gap: 6px; }
-
 /* ── Element Plus dark overrides ─────────── */
 .el-card {
   --el-card-bg-color: var(--surface-2) !important;

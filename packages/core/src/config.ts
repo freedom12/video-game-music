@@ -11,7 +11,6 @@ const envSchema = z
     MEDIA_LIBRARY_ROOT: z.string().trim().optional(),
     DATABASE_PATH: z.string().trim().optional(),
     MEDIA_CACHE_DIR: z.string().trim().optional(),
-    ADMIN_TOKEN: z.string().trim().optional(),
     BASE_URL: z.string().trim().optional(),
     COS_BUCKET: z.string().trim().optional(),
     COS_REGION: z.string().trim().optional(),
@@ -35,7 +34,6 @@ export interface AppConfig {
   mediaSource: 'local' | 'cos';
   libraryRoot: string;
   mediaCacheDir: string;
-  adminToken?: string;
   /** 服务对外暴露的 Base URL，用于生成 streamUrl/coverUrl。未配置时从请求头自动推断。 */
   baseUrl?: string;
   cosBucket?: string;
@@ -62,7 +60,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.c
     MEDIA_LIBRARY_ROOT: env.MEDIA_LIBRARY_ROOT,
     DATABASE_PATH: env.DATABASE_PATH,
     MEDIA_CACHE_DIR: env.MEDIA_CACHE_DIR,
-    ADMIN_TOKEN: env.ADMIN_TOKEN,
     BASE_URL: env.BASE_URL,
     COS_BUCKET: env.COS_BUCKET,
     COS_REGION: env.COS_REGION,
@@ -87,7 +84,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.c
       parsed.MEDIA_CACHE_DIR,
       path.join(workspaceRoot, 'var', 'media-cache'),
     ),
-    adminToken: parsed.ADMIN_TOKEN || undefined,
     baseUrl: parsed.BASE_URL?.replace(/\/$/, '') || undefined,
     cosBucket: parsed.COS_BUCKET || undefined,
     cosRegion: parsed.COS_REGION || undefined,

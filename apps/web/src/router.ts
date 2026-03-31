@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import AdminView from './views/AdminView.vue'
 import AlbumListView from './views/AlbumListView.vue'
 import AlbumView from './views/AlbumView.vue'
 import CollectionListView from './views/CollectionListView.vue'
@@ -20,7 +19,6 @@ export const router = createRouter({
     { path: '/collections', name: 'collections-list', component: CollectionListView },
     { path: '/collections/:id', name: 'collection', component: CollectionView },
     { path: '/search', name: 'search', component: SearchView },
-    { path: '/admin', name: 'admin', component: AdminView },
   ],
   scrollBehavior() {
     return { top: 0 }

@@ -111,7 +111,7 @@ onMounted(async () => {
                 :collection="collection"
               />
             </div>
-            <el-empty v-else description="还没有主题歌单，可在管理页创建。" />
+            <el-empty v-else description="还没有主题歌单。" />
           </div>
         </el-tab-pane>
       </el-tabs>
