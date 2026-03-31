@@ -29,7 +29,7 @@ onMounted(async () => {
     collections.value = collectionData
     seriesList.value = seriesData
   } catch (error) {
-    loadError.value = 'API 当前不可用，请确认后端开发服务已运行在 127.0.0.1:8787。'
+    loadError.value = 'API 当前不可用，请确认后端开发服务已运行在 127.0.0.1:5005。'
     ElMessage.error(loadError.value)
     console.error(error)
   } finally {

@@ -4,27 +4,29 @@ import path from 'node:path';
 import { config as loadDotEnvFile } from 'dotenv';
 import { z } from 'zod';
 
-const envSchema = z.object({
-  API_PORT: z.string().regex(/^\d+$/).default('8787'),
-  MEDIA_SOURCE: z.enum(['local', 'cos']).default('local'),
-  MEDIA_LIBRARY_ROOT: z.string().trim().optional(),
-  DATABASE_PATH: z.string().trim().optional(),
-  MEDIA_CACHE_DIR: z.string().trim().optional(),
-  ADMIN_TOKEN: z.string().trim().optional(),
-  BASE_URL: z.string().trim().optional(),
-  COS_BUCKET: z.string().trim().optional(),
-  COS_REGION: z.string().trim().optional(),
-  COS_SECRET_ID: z.string().trim().optional(),
-  COS_SECRET_KEY: z.string().trim().optional(),
-}).superRefine((data, ctx) => {
-  if (data.MEDIA_SOURCE === 'local' && !data.MEDIA_LIBRARY_ROOT) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'MEDIA_LIBRARY_ROOT is required when MEDIA_SOURCE is "local"',
-      path: ['MEDIA_LIBRARY_ROOT'],
-    });
-  }
-});
+const envSchema = z
+  .object({
+    API_PORT: z.string().regex(/^\d+$/).default("5005"),
+    MEDIA_SOURCE: z.enum(["local", "cos"]).default("local"),
+    MEDIA_LIBRARY_ROOT: z.string().trim().optional(),
+    DATABASE_PATH: z.string().trim().optional(),
+    MEDIA_CACHE_DIR: z.string().trim().optional(),
+    ADMIN_TOKEN: z.string().trim().optional(),
+    BASE_URL: z.string().trim().optional(),
+    COS_BUCKET: z.string().trim().optional(),
+    COS_REGION: z.string().trim().optional(),
+    COS_SECRET_ID: z.string().trim().optional(),
+    COS_SECRET_KEY: z.string().trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.MEDIA_SOURCE === "local" && !data.MEDIA_LIBRARY_ROOT) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'MEDIA_LIBRARY_ROOT is required when MEDIA_SOURCE is "local"',
+        path: ["MEDIA_LIBRARY_ROOT"],
+      });
+    }
+  });
 
 export interface AppConfig {
   apiPort: number;

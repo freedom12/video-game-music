@@ -4,7 +4,7 @@ import { createApp } from './app.js';
 
 loadWorkspaceEnv(process.cwd());
 const app = await createApp();
-const port = Number.parseInt(process.env.API_PORT ?? '8787', 10);
+const port = Number.parseInt(process.env.API_PORT ?? "5005", 10);
 
 try {
   await app.listen({

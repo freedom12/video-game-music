@@ -5,12 +5,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 // ---------------------------------------------------------------------------
 vi.mock('@vgm/core', () => {
   const mockConfig = {
-    apiPort: 8787,
-    workspaceRoot: '/tmp',
-    databasePath: ':memory:',
-    mediaSource: 'local' as const,
-    libraryRoot: '/tmp/library',
-    mediaCacheDir: '/tmp/cache',
+    apiPort: 5005,
+    workspaceRoot: "/tmp",
+    databasePath: ":memory:",
+    mediaSource: "local" as const,
+    libraryRoot: "/tmp/library",
+    mediaCacheDir: "/tmp/cache",
   };
 
   const mockAlbumListItem = {
