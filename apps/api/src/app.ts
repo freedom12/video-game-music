@@ -71,6 +71,8 @@ export async function createApp() {
 
   app.get('/api/health', async () => ({ ok: true }));
 
+  app.get('/api/media-source', async () => ({ source: config.mediaSource }));
+
   app.get('/api/albums/search', async (request) => {
     const context = await getDatabase(config);
     const { q, artist, genre, year, seriesId, limit, offset } = request.query as {

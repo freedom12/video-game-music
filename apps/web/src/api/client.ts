@@ -25,6 +25,11 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+export async function fetchMediaSource(): Promise<'local' | 'cos'> {
+  const { data } = await api.get<{ source: 'local' | 'cos' }>('/media-source')
+  return data.source
+}
+
 export async function fetchAlbums() {
   const { data } = await api.get<AlbumListItem[]>('/albums')
   return data

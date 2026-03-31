@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import { Search } from '@element-plus/icons-vue'
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
+import { fetchMediaSource } from './api/client'
 import PlayerBar from './components/PlayerBar.vue'
 
 const route = useRoute()
 const router = useRouter()
 const search = ref(typeof route.query.q === 'string' ? route.query.q : '')
+const isLocalMedia = ref(false)
+
+onMounted(async () => {
+  try {
+    const source = await fetchMediaSource()
+    isLocalMedia.value = source === 'local'
+  } catch {
+    // ignore
+  }
+})
 
 watch(
   () => route.query.q,
@@ -30,7 +41,7 @@ function submitSearch() {
       <RouterLink class="topbar-brand" to="/">
         <div class="topbar-logo">🎮</div>
         <div class="topbar-title">
-          <strong>VGM 曲库</strong>
+          <strong>VGM 曲库</strong><span v-if="isLocalMedia" class="topbar-local-badge">本地</span>
         </div>
       </RouterLink>
 
