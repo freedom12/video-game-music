@@ -40,7 +40,7 @@ export interface AppConfig {
   cosRegion?: string;
   cosSecretId?: string;
   cosSecretKey?: string;
-  onImportProgress?: (event: import('@vgm/shared').ImportProgressEvent) => void;
+  onImportProgress?: (event: import('./types.js').ImportProgressEvent) => void;
 }
 
 function resolveFromWorkspace(workspaceRoot: string, value: string | undefined, fallback: string) {

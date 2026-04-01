@@ -7,6 +7,7 @@ import type {
   LibrarySearchResult,
   SeriesDetail,
   SeriesListItem,
+  TrackDetail,
   TrackListItem,
   TrackSearchItem,
   TrackSearchResult,
@@ -119,7 +120,8 @@ export async function getAlbumDetail(context: DatabaseContext, albumId: string):
   };
 }
 
-export async function getTrackById(context: DatabaseContext, trackId: string) {
+/** Internal: returns full TrackRecord for core-internal use (e.g. media resolution). */
+export async function getTrackRecordById(context: DatabaseContext, trackId: string) {
   const row = get<Record<string, unknown>>(context, `
     SELECT *
     FROM tracks
@@ -127,6 +129,20 @@ export async function getTrackById(context: DatabaseContext, trackId: string) {
   `, [trackId]);
 
   return row ? mapTrack(row) : null;
+}
+
+export async function getTrackById(context: DatabaseContext, trackId: string): Promise<TrackDetail | null> {
+  const track = await getTrackRecordById(context, trackId);
+  if (!track) return null;
+  return {
+    publicId: track.publicId,
+    title: trackLabel(track),
+    artist: artistLabel(track),
+    durationSeconds: track.durationSeconds,
+    format: track.format,
+    year: track.year,
+    genre: track.genre,
+  };
 }
 
 export async function getMediaAssetById(context: DatabaseContext, assetId: string) {

@@ -2,7 +2,7 @@ import path from 'node:path';
 
 import type { AppConfig } from './config.js';
 import type { DatabaseContext } from './db.js';
-import { getMediaAssetById, getTrackById } from './catalog.js';
+import { getMediaAssetById, getTrackRecordById } from './catalog.js';
 import { CosStorageProvider } from './storage-cos.js';
 import { LocalStorageProvider } from './storage-local.js';
 import type { StorageProvider } from './storage.js';
@@ -28,7 +28,7 @@ export function createStorageProvider(config: AppConfig): StorageProvider {
 }
 
 export async function resolveTrackStream(context: DatabaseContext, config: AppConfig, trackId: string): Promise<StreamResolution | null> {
-  const track = await getTrackById(context, trackId);
+  const track = await getTrackRecordById(context, trackId);
   if (!track) {
     return null;
   }
@@ -67,7 +67,7 @@ export async function resolveTrackEmbeddedCover(
   config: AppConfig,
   trackId: string,
 ): Promise<Buffer | null> {
-  const track = await getTrackById(context, trackId);
+  const track = await getTrackRecordById(context, trackId);
   if (!track) return null;
 
   const asset = await getMediaAssetById(context, track.mediaAssetId);

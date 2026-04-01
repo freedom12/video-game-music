@@ -6,6 +6,14 @@ import Fastify from 'fastify';
 
 import { albumRoutes, collectionRoutes, seriesRoutes, similarityRoutes, trackRoutes } from './routes/index.js';
 
+const ERROR_CODE_TO_STATUS: Record<string, number> = {
+  NOT_FOUND: 404,
+  VALIDATION_ERROR: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  STORAGE_ERROR: 502,
+};
+
 function isAppError(error: unknown): error is AppError {
   return (
     error != null
@@ -33,7 +41,8 @@ export async function createApp() {
   // --- Global error handler ---
   app.setErrorHandler((error, _request, reply) => {
     if (isAppError(error)) {
-      return reply.code(error.statusCode).send({
+      const statusCode = ERROR_CODE_TO_STATUS[error.code] ?? 500;
+      return reply.code(statusCode).send({
         code: error.code,
         message: error.message,
         ...(error.details !== undefined && { details: error.details }),

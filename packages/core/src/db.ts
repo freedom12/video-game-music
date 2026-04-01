@@ -12,7 +12,7 @@ import type {
   SeriesRecord,
   SourceMeta,
   TrackRecord,
-} from '@vgm/shared';
+} from './types.js';
 
 import type { AppConfig } from './config.js';
 

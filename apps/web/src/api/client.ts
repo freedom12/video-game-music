@@ -9,7 +9,7 @@ import type {
   SeriesDetail,
   SeriesListItem,
   SimilarTrack,
-  TrackRecord,
+  TrackDetail,
 } from '@vgm/shared'
 
 export type { CollectionListItem, SeriesListItem, SeriesDetail }
@@ -34,7 +34,7 @@ export async function fetchAlbum(id: string) {
 }
 
 export async function fetchTrack(id: string) {
-  const { data } = await api.get<TrackRecord>(`/tracks/${id}`)
+  const { data } = await api.get<TrackDetail>(`/tracks/${id}`)
   return data
 }
 

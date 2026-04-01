@@ -5,7 +5,6 @@ export class AppError extends Error {
   constructor(
     public readonly code: string,
     message: string,
-    public readonly statusCode: number = 500,
     public readonly details?: unknown,
   ) {
     super(message);
@@ -25,7 +24,6 @@ export class NotFoundError extends AppError {
     super(
       'NOT_FOUND',
       id ? `${resource} '${id}' not found` : `${resource} not found`,
-      404,
     );
     this.name = 'NotFoundError';
   }
@@ -33,28 +31,28 @@ export class NotFoundError extends AppError {
 
 export class ValidationError extends AppError {
   constructor(message: string, details?: unknown) {
-    super('VALIDATION_ERROR', message, 400, details);
+    super('VALIDATION_ERROR', message, details);
     this.name = 'ValidationError';
   }
 }
 
 export class UnauthorizedError extends AppError {
   constructor(message = 'Unauthorized') {
-    super('UNAUTHORIZED', message, 401);
+    super('UNAUTHORIZED', message);
     this.name = 'UnauthorizedError';
   }
 }
 
 export class ForbiddenError extends AppError {
   constructor(message = 'Forbidden') {
-    super('FORBIDDEN', message, 403);
+    super('FORBIDDEN', message);
     this.name = 'ForbiddenError';
   }
 }
 
 export class StorageError extends AppError {
   constructor(message: string, details?: unknown) {
-    super('STORAGE_ERROR', message, 502, details);
+    super('STORAGE_ERROR', message, details);
     this.name = 'StorageError';
   }
 }

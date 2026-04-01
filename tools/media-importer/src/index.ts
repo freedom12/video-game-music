@@ -1,6 +1,6 @@
 
 import { cleanLibrary, closeDatabase, updateLibrary, getDatabase, initLibrary, loadConfig, loadWorkspaceEnv } from '@vgm/core';
-import { ImportProgressEvent } from "@vgm/shared";
+import type { ImportProgressEvent } from "@vgm/core";
 
 loadWorkspaceEnv(process.cwd());
 const config = loadConfig(process.env, process.cwd());

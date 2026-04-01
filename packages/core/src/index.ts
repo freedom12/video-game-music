@@ -8,3 +8,4 @@ export * from './storage.js';
 export * from './storage-cos.js';
 export * from './storage-local.js';
 export * from './sync.js';
+export * from './types.js';
