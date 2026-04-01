@@ -158,13 +158,6 @@ async function connectDatabase(config: AppConfig): Promise<DatabaseContext> {
     if (assetCols.has(col)) db.exec(`ALTER TABLE mediaAssets DROP COLUMN ${col}`);
   }
 
-  const albumCols = new Set(
-    (db.prepare(`PRAGMA table_info(albums)`).all() as Array<{ name: string }>).map((c) => c.name),
-  );
-  for (const col of ['albumKey']) {
-    if (albumCols.has(col)) db.exec(`ALTER TABLE albums DROP COLUMN ${col}`);
-  }
-
   return { db };
 }
 

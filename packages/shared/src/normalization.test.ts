@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { compareTrackOrder, makeAlbumKey, normalizeRelativePath, parseTagNumber } from './normalization.js';
+import { compareTrackOrder, normalizeRelativePath, parseTagNumber } from './normalization.js';
 
 describe('normalization helpers', () => {
   it('normalizes relative paths to posix', () => {
     expect(normalizeRelativePath('F:\\wh\\音乐', 'F:\\wh\\音乐\\Pokémon\\Disc 1\\01 Test.mp3')).toBe('Pokémon/Disc 1/01 Test.mp3');
-  });
-
-  it('creates album keys from normalized metadata', () => {
-    expect(makeAlbumKey('  Pokémon OST  ', 'Game Freak')).toBe('game freak::pokémon ost');
   });
 
   it('parses track numbers from tag values', () => {

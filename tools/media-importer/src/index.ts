@@ -1,12 +1,11 @@
-import path from 'node:path';
 
-import { all, cleanLibrary, closeDatabase, updateLibrary, extractAudioFeatures, getDatabase, hasAudioFeature, initLibrary, loadConfig, loadWorkspaceEnv, transaction, upsertAudioFeatureBatch } from '@vgm/core';
-import type { AudioFeatureVectors } from '@vgm/core';
+import { cleanLibrary, closeDatabase, updateLibrary, getDatabase, initLibrary, loadConfig, loadWorkspaceEnv } from '@vgm/core';
+import { ImportProgressEvent } from "@vgm/shared";
 
 loadWorkspaceEnv(process.cwd());
 const config = loadConfig(process.env, process.cwd());
 
-function formatImportProgress(event: import('@vgm/shared').ImportProgressEvent) {
+function formatImportProgress(event: ImportProgressEvent) {
   const progress = event.total ? ` ${event.processed ?? 0}/${event.total}` : '';
   const elapsed = typeof event.elapsedMs === 'number' ? ` (${Math.round(event.elapsedMs / 1000)}s)` : '';
   return `[import:${event.phase}]${progress}${elapsed} ${event.message}`;
@@ -16,7 +15,7 @@ const command = process.argv[2] ?? 'update';
 
 async function main() {
   const context = await getDatabase(config);
-  const configWithProgress = { ...config, onImportProgress: (event: import('@vgm/shared').ImportProgressEvent) => console.log(formatImportProgress(event)) };
+  const configWithProgress = { ...config, onImportProgress: (event: ImportProgressEvent) => console.log(formatImportProgress(event)) };
 
   if (command === 'init') {
     console.log('清空所有数据，开始完整重导入...');

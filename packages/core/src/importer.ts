@@ -21,7 +21,6 @@ import type {
 import {
   SUPPORTED_AUDIO_EXTENSIONS,
   compareTrackOrder,
-  makeAlbumKey,
   normalizeDisplayValue,
   normalizeRelativePath,
   normalizeSortTitle,
@@ -184,10 +183,7 @@ export async function scanLibrary(context: DatabaseContext, options: ImportOptio
     }
   }
 
-  const albumKeys = new Set(candidates.map((candidate) => makeAlbumKey(
-    candidate.metadata.album,
-    candidate.metadata.albumArtist,
-  )));
+  const albumTitles = new Set(candidates.map((candidate) => candidate.metadata.album));
 
   const summary: LibraryScanSummary = {
     root: options.libraryRoot,
@@ -198,7 +194,7 @@ export async function scanLibrary(context: DatabaseContext, options: ImportOptio
       updatedFiles: changes.filter((change) => change.kind === 'updated').length,
       missingFiles: changes.filter((change) => change.kind === 'missing').length,
       unchangedFiles: changes.filter((change) => change.kind === 'unchanged').length,
-      albums: albumKeys.size,
+      albums: albumTitles.size,
     },
     changes,
   };
@@ -214,50 +210,64 @@ export async function scanLibrary(context: DatabaseContext, options: ImportOptio
   return { summary, candidates, existingAssets, existingTracks };
 }
 
-export async function updateLibrary(context: DatabaseContext, config: AppConfig) {
-  const startedAt = Date.now();
-  await ensureCacheDirs(config.mediaCacheDir);
-  const scan = await scanLibrary(context, {
-    libraryRoot: config.libraryRoot,
-    cacheDir: config.mediaCacheDir,
-    onProgress: config.onImportProgress,
-  });
+/** Shared context threaded through each updateLibrary phase */
+interface UpdatePhaseContext {
+  db: DatabaseContext;
+  config: AppConfig;
+  startedAt: number;
+}
 
-  // Reuse data already loaded during scan instead of re-querying
-  const assetMap = new Map(scan.existingAssets.map((asset) => [asset.contentHash, asset]));
-  const trackMap = new Map(scan.existingTracks.map((track) => [track.mediaAssetId, track]));
-  const now = new Date().toISOString();
+function elapsed(ctx: UpdatePhaseContext): number {
+  return Date.now() - ctx.startedAt;
+}
 
-  // Deduplicate candidates by contentHash — keep the first occurrence per hash
-  const uniqueCandidates: ScannedCandidate[] = [];
-  const seenCandidateHashes = new Set<string>();
-  for (const candidate of scan.candidates) {
-    if (!seenCandidateHashes.has(candidate.contentHash)) {
-      seenCandidateHashes.add(candidate.contentHash);
-      uniqueCandidates.push(candidate);
+/** Deduplicate candidates by contentHash, keeping the first occurrence per hash */
+function deduplicateCandidates(
+  ctx: UpdatePhaseContext,
+  candidates: ScannedCandidate[],
+): ScannedCandidate[] {
+  const seen = new Set<string>();
+  const unique: ScannedCandidate[] = [];
+  for (const candidate of candidates) {
+    if (!seen.has(candidate.contentHash)) {
+      seen.add(candidate.contentHash);
+      unique.push(candidate);
     }
   }
-  if (uniqueCandidates.length < scan.candidates.length) {
-    reportProgress(config, {
+  if (unique.length < candidates.length) {
+    reportProgress(ctx.config, {
       phase: 'write',
-      message: `去重：${scan.candidates.length} → ${uniqueCandidates.length}（跳过 ${scan.candidates.length - uniqueCandidates.length} 个重复文件）`,
-      elapsedMs: Date.now() - startedAt,
+      message: `去重：${candidates.length} → ${unique.length}（跳过 ${candidates.length - unique.length} 个重复文件）`,
+      elapsedMs: elapsed(ctx),
     });
   }
+  return unique;
+}
 
-  reportProgress(config, {
+/** Write assets and tracks to the database, mark missing assets */
+function writeAssetsAndTracks(
+  ctx: UpdatePhaseContext,
+  scan: ScanInternalResult,
+  uniqueCandidates: ScannedCandidate[],
+): void {
+  const assetMap = new Map(scan.existingAssets.map((a) => [a.contentHash, a]));
+  const trackMap = new Map(scan.existingTracks.map((t) => [t.mediaAssetId, t]));
+  const now = new Date().toISOString();
+
+  reportProgress(ctx.config, {
     phase: 'write',
     message: `开始写入数据库，共 ${uniqueCandidates.length} 个文件`,
     processed: 0,
     total: uniqueCandidates.length,
-    elapsedMs: Date.now() - startedAt,
+    elapsedMs: elapsed(ctx),
   });
 
-  const activeHashes = new Set(uniqueCandidates.map((candidate) => candidate.contentHash));
-  const missingAssets = scan.existingAssets.filter((asset) => !activeHashes.has(asset.contentHash) && asset.presenceStatus === 'active');
+  const activeHashes = new Set(uniqueCandidates.map((c) => c.contentHash));
+  const missingAssets = scan.existingAssets.filter(
+    (a) => !activeHashes.has(a.contentHash) && a.presenceStatus === 'active',
+  );
 
-  // Prepare statements once, reuse in loop
-  const insertAssetStmt = prepare(context, `
+  const insertAssetStmt = prepare(ctx.db, `
     INSERT INTO mediaAssets (
       publicId, relativePath, extension, mimeType, fileSize, modifiedAt, contentHash,
       syncStatus, presenceStatus, createdAt, updatedAt
@@ -273,7 +283,7 @@ export async function updateLibrary(context: DatabaseContext, config: AppConfig)
       updatedAt = excluded.updatedAt
   `);
 
-  const insertTrackStmt = prepare(context, `
+  const insertTrackStmt = prepare(ctx.db, `
     INSERT INTO tracks (
       publicId, mediaAssetId, title, artist, durationSeconds, format, year, genre, sourceMeta,
       displayTitle, displayArtist, hidden, createdAt, updatedAt
@@ -292,19 +302,16 @@ export async function updateLibrary(context: DatabaseContext, config: AppConfig)
       updatedAt = excluded.updatedAt
   `);
 
-  const markMissingStmt = prepare(context, `
+  const markMissingStmt = prepare(ctx.db, `
     UPDATE mediaAssets
     SET presenceStatus = 'missing', syncStatus = 'pending', updatedAt = ?
     WHERE contentHash = ?
   `);
 
-  transaction(context, () => {
+  transaction(ctx.db, () => {
     for (const [index, candidate] of uniqueCandidates.entries()) {
       const existingAsset = assetMap.get(candidate.contentHash);
       const assetPublicId = existingAsset?.publicId ?? uuidv7();
-      const unchanged = existingAsset?.fileSize === candidate.fileSize && existingAsset.modifiedAt === candidate.modifiedAt;
-
-      // contentHash match means audio data is identical — keep existing syncStatus
       const syncStatus = existingAsset?.syncStatus ?? 'pending';
 
       insertAssetStmt.run(
@@ -340,12 +347,12 @@ export async function updateLibrary(context: DatabaseContext, config: AppConfig)
       );
 
       if ((index + 1) % 100 === 0 || index === uniqueCandidates.length - 1) {
-        reportProgress(config, {
+        reportProgress(ctx.config, {
           phase: 'write',
           message: `已写入 ${index + 1}/${uniqueCandidates.length} 个文件`,
           processed: index + 1,
           total: uniqueCandidates.length,
-          elapsedMs: Date.now() - startedAt,
+          elapsedMs: elapsed(ctx),
         });
       }
     }
@@ -354,94 +361,117 @@ export async function updateLibrary(context: DatabaseContext, config: AppConfig)
       markMissingStmt.run(now, asset.contentHash);
     }
   });
+}
 
-  // --- Audio feature extraction phase ---
-  // Only extract features for candidates that don't already have them
-  const candidatesNeedingFeatures: Array<{ assetId: string; absolutePath: string }> = [];
+/** Extract audio features for candidates that don't already have them */
+async function extractMissingFeatures(
+  ctx: UpdatePhaseContext,
+  uniqueCandidates: ScannedCandidate[],
+): Promise<void> {
+  const candidates: Array<{ assetId: string; absolutePath: string }> = [];
   for (const candidate of uniqueCandidates) {
-    const existingAsset = assetMap.get(candidate.contentHash);
-    const assetId = existingAsset?.publicId ?? candidate.contentHash;
-    // Re-resolve assetId from DB since we may have just inserted it
-    const insertedAsset = get<{ publicId: string }>(context, `SELECT publicId FROM mediaAssets WHERE contentHash = ?`, [candidate.contentHash]);
-    if (insertedAsset && !hasAudioFeature(context, insertedAsset.publicId)) {
-      candidatesNeedingFeatures.push({ assetId: insertedAsset.publicId, absolutePath: candidate.absolutePath });
+    const row = get<{ publicId: string }>(
+      ctx.db,
+      `SELECT publicId FROM mediaAssets WHERE contentHash = ?`,
+      [candidate.contentHash],
+    );
+    if (row && !hasAudioFeature(ctx.db, row.publicId)) {
+      candidates.push({ assetId: row.publicId, absolutePath: candidate.absolutePath });
     }
   }
 
-  if (candidatesNeedingFeatures.length > 0) {
-    reportProgress(config, {
-      phase: 'features',
-      message: `开始提取音频特征，共 ${candidatesNeedingFeatures.length} 个文件`,
-      processed: 0,
-      total: candidatesNeedingFeatures.length,
-      elapsedMs: Date.now() - startedAt,
+  if (candidates.length === 0) return;
+
+  reportProgress(ctx.config, {
+    phase: 'features',
+    message: `开始提取音频特征，共 ${candidates.length} 个文件`,
+    processed: 0,
+    total: candidates.length,
+    elapsedMs: elapsed(ctx),
+  });
+
+  const CONCURRENCY = 8;
+  const BATCH_SIZE = 100;
+  let nextIndex = 0;
+  let completed = 0;
+  let succeeded = 0;
+  const batch: Array<{ mediaAssetId: string; features: AudioFeatureVectors }> = [];
+
+  function flushBatch() {
+    if (batch.length === 0) return;
+    const toWrite = batch.splice(0);
+    transaction(ctx.db, () => {
+      upsertAudioFeatureBatch(ctx.db, toWrite);
     });
+  }
 
-    const FEATURE_CONCURRENCY = 8;
-    const FEATURE_BATCH_SIZE = 100;
-    let nextFeatureIndex = 0;
-    let featureCompleted = 0;
-    let featureSucceeded = 0;
-    const featureBatch: Array<{ mediaAssetId: string; features: AudioFeatureVectors }> = [];
+  async function worker() {
+    while (nextIndex < candidates.length) {
+      const idx = nextIndex++;
+      const item = candidates[idx]!;
+      try {
+        const features = await extractAudioFeatures(item.absolutePath);
+        batch.push({ mediaAssetId: item.assetId, features });
+        succeeded++;
+      } catch {
+        // skip files that fail feature extraction
+      }
+      completed++;
 
-    function flushFeatureBatch() {
-      if (featureBatch.length === 0) return;
-      const toWrite = featureBatch.splice(0);
-      transaction(context, () => {
-        upsertAudioFeatureBatch(context, toWrite);
-      });
-    }
+      if (batch.length >= BATCH_SIZE) {
+        flushBatch();
+      }
 
-    async function extractNextFeature() {
-      while (nextFeatureIndex < candidatesNeedingFeatures.length) {
-        const idx = nextFeatureIndex++;
-        const item = candidatesNeedingFeatures[idx]!;
-        try {
-          const features = await extractAudioFeatures(item.absolutePath);
-          featureBatch.push({ mediaAssetId: item.assetId, features });
-          featureSucceeded++;
-        } catch {
-          // skip files that fail feature extraction
-        }
-        featureCompleted++;
-
-        // Write batch to DB periodically to avoid losing progress on interruption
-        if (featureBatch.length >= FEATURE_BATCH_SIZE) {
-          flushFeatureBatch();
-        }
-
-        if (featureCompleted % 100 === 0 || featureCompleted === candidatesNeedingFeatures.length) {
-          reportProgress(config, {
-            phase: 'features',
-            message: `正在提取音频特征：${featureCompleted}/${candidatesNeedingFeatures.length}`,
-            processed: featureCompleted,
-            total: candidatesNeedingFeatures.length,
-            elapsedMs: Date.now() - startedAt,
-          });
-        }
+      if (completed % 100 === 0 || completed === candidates.length) {
+        reportProgress(ctx.config, {
+          phase: 'features',
+          message: `正在提取音频特征：${completed}/${candidates.length}`,
+          processed: completed,
+          total: candidates.length,
+          elapsedMs: elapsed(ctx),
+        });
       }
     }
-
-    await Promise.all(
-      Array.from({ length: Math.min(FEATURE_CONCURRENCY, candidatesNeedingFeatures.length) }, extractNextFeature),
-    );
-
-    // Write remaining batch
-    flushFeatureBatch();
-
-    reportProgress(config, {
-      phase: 'features',
-      message: `音频特征提取完成：${featureSucceeded}/${candidatesNeedingFeatures.length} 成功`,
-      processed: candidatesNeedingFeatures.length,
-      total: candidatesNeedingFeatures.length,
-      elapsedMs: Date.now() - startedAt,
-    });
   }
 
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, candidates.length) }, worker));
+  flushBatch();
+
+  reportProgress(ctx.config, {
+    phase: 'features',
+    message: `音频特征提取完成：${succeeded}/${candidates.length} 成功`,
+    processed: candidates.length,
+    total: candidates.length,
+    elapsedMs: elapsed(ctx),
+  });
+}
+
+export async function updateLibrary(context: DatabaseContext, config: AppConfig) {
+  const ctx: UpdatePhaseContext = { db: context, config, startedAt: Date.now() };
+
+  await ensureCacheDirs(config.mediaCacheDir);
+
+  // Phase 1: Scan
+  const scan = await scanLibrary(context, {
+    libraryRoot: config.libraryRoot,
+    cacheDir: config.mediaCacheDir,
+    onProgress: config.onImportProgress,
+  });
+
+  // Phase 2: Deduplicate
+  const uniqueCandidates = deduplicateCandidates(ctx, scan.candidates);
+
+  // Phase 3: Write assets & tracks
+  writeAssetsAndTracks(ctx, scan, uniqueCandidates);
+
+  // Phase 4: Audio feature extraction
+  await extractMissingFeatures(ctx, uniqueCandidates);
+
+  // Phase 5: Rebuild albums & series
   reportProgress(config, {
     phase: 'rebuild',
     message: '开始重建系统专辑集合',
-    elapsedMs: Date.now() - startedAt,
+    elapsedMs: elapsed(ctx),
   });
 
   await rebuildAlbums(context, config);
@@ -451,7 +481,7 @@ export async function updateLibrary(context: DatabaseContext, config: AppConfig)
     message: `导入完成：${scan.summary.totals.files} 个文件`,
     processed: scan.summary.totals.files,
     total: scan.summary.totals.files,
-    elapsedMs: Date.now() - startedAt,
+    elapsedMs: elapsed(ctx),
   });
 
   return scan.summary;
@@ -467,16 +497,16 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
   const groups = new Map<string, typeof activeTracks>();
 
   for (const track of activeTracks) {
-    const albumKey = makeAlbumKey(track.sourceMeta.album, track.sourceMeta.albumArtist);
-    const current = groups.get(albumKey);
+    const title = track.sourceMeta.album;
+    const current = groups.get(title);
     if (current) {
       current.push(track);
     } else {
-      groups.set(albumKey, [track]);
+      groups.set(title, [track]);
     }
   }
 
-  const existingAlbumMap = new Map(existingAlbums.map((album) => [makeAlbumKey(album.title, album.albumArtist), album]));
+  const existingAlbumMap = new Map(existingAlbums.map((album) => [album.title, album]));
   const albumDocs: AlbumRecord[] = [];
   const albumFirstTrackPath = new Map<string, string>();
   const albumTrackDocs: Array<{
@@ -490,7 +520,7 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
   }> = [];
   const now = new Date().toISOString();
 
-  for (const [albumKey, group] of groups) {
+  for (const [title, group] of groups) {
     group.sort((left, right) => compareTrackOrder(
       {
         discNumber: left.sourceMeta.discNumber,
@@ -505,7 +535,7 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
     ));
 
     const firstTrack = group[0]!;
-    const existingAlbum = existingAlbumMap.get(albumKey);
+    const existingAlbum = existingAlbumMap.get(title);
     const albumPublicId = existingAlbum?.publicId ?? uuidv7();
     const firstTrackAsset = trackAssetMap.get(firstTrack.mediaAssetId);
     if (firstTrackAsset) {

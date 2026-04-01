@@ -31,13 +31,6 @@ export function normalizeSortTitle(value: string): string {
   return normalizeDisplayValue(value).replace(sortablePrefixPattern, '').toLowerCase();
 }
 
-export function makeAlbumKey(album: string, albumArtist: string): string {
-  const normalizedAlbum = normalizeDisplayValue(album).toLowerCase();
-  const normalizedArtist = normalizeDisplayValue(albumArtist).toLowerCase();
-
-  return `${normalizedArtist}::${normalizedAlbum}`;
-}
-
 /**
  * 从专辑的 sourceDirectory 路径中提取系列名（第一层文件夹名）。
  * 例如 "Pokemon/01. Pokemon Red" → "Pokemon"
