@@ -396,13 +396,16 @@ async function extractMissingFeatures(
   let completed = 0;
   let succeeded = 0;
   const batch: Array<{ mediaAssetId: string; features: AudioFeatureVectors }> = [];
+  let flushing = false;
 
   function flushBatch() {
-    if (batch.length === 0) return;
+    if (batch.length === 0 || flushing) return;
+    flushing = true;
     const toWrite = batch.splice(0);
     transaction(ctx.db, () => {
       upsertAudioFeatureBatch(ctx.db, toWrite);
     });
+    flushing = false;
   }
 
   async function worker() {

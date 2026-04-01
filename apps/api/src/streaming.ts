@@ -21,6 +21,12 @@ export async function streamLocalFile(
       const start = Number.parseInt(match[1] ?? '0', 10);
       const end = match[2] ? Number.parseInt(match[2], 10) : fileSize - 1;
 
+      if (start > end || start >= fileSize || end >= fileSize) {
+        reply.code(416);
+        reply.header('Content-Range', `bytes */${fileSize}`);
+        return reply.send();
+      }
+
       reply.code(206);
       reply.header('Content-Range', `bytes ${start}-${end}/${fileSize}`);
       reply.header('Accept-Ranges', 'bytes');

@@ -43,7 +43,7 @@ function albumArtistLabel(album: { displayArtist?: string; albumArtist: string }
   return album.displayArtist || album.albumArtist;
 }
 
-export async function listAlbums(context: DatabaseContext): Promise<AlbumListItem[]> {
+export function listAlbums(context: DatabaseContext): AlbumListItem[] {
   const rows = all<Record<string, unknown>>(context, `
     SELECT
       a.*,
@@ -69,7 +69,7 @@ export async function listAlbums(context: DatabaseContext): Promise<AlbumListIte
   });
 }
 
-export async function getAlbumDetail(context: DatabaseContext, albumId: string): Promise<AlbumDetail | null> {
+export function getAlbumDetail(context: DatabaseContext, albumId: string): AlbumDetail | null {
   const albumRow = get<Record<string, unknown>>(context, `
     SELECT *
     FROM albums
@@ -121,7 +121,7 @@ export async function getAlbumDetail(context: DatabaseContext, albumId: string):
 }
 
 /** Internal: returns full TrackRecord for core-internal use (e.g. media resolution). */
-export async function getTrackRecordById(context: DatabaseContext, trackId: string) {
+export function getTrackRecordById(context: DatabaseContext, trackId: string) {
   const row = get<Record<string, unknown>>(context, `
     SELECT *
     FROM tracks
@@ -131,8 +131,8 @@ export async function getTrackRecordById(context: DatabaseContext, trackId: stri
   return row ? mapTrack(row) : null;
 }
 
-export async function getTrackById(context: DatabaseContext, trackId: string): Promise<TrackDetail | null> {
-  const track = await getTrackRecordById(context, trackId);
+export function getTrackById(context: DatabaseContext, trackId: string): TrackDetail | null {
+  const track = getTrackRecordById(context, trackId);
   if (!track) return null;
   return {
     publicId: track.publicId,
@@ -145,7 +145,7 @@ export async function getTrackById(context: DatabaseContext, trackId: string): P
   };
 }
 
-export async function getMediaAssetById(context: DatabaseContext, assetId: string) {
+export function getMediaAssetById(context: DatabaseContext, assetId: string) {
   const row = get<Record<string, unknown>>(context, `
     SELECT *
     FROM mediaAssets
@@ -155,13 +155,13 @@ export async function getMediaAssetById(context: DatabaseContext, assetId: strin
   return row ? mapMediaAsset(row) : null;
 }
 
-export async function listCollections(context: DatabaseContext): Promise<Array<{
+export function listCollections(context: DatabaseContext): Array<{
   publicId: string;
   title: string;
   description?: string;
   status: 'draft' | 'published';
   trackCount: number;
-}>> {
+}> {
   const rows = all<Record<string, unknown>>(context, `
     SELECT
       c.*,
@@ -184,7 +184,7 @@ export async function listCollections(context: DatabaseContext): Promise<Array<{
   });
 }
 
-export async function getCollectionDetail(context: DatabaseContext, collectionId: string): Promise<CollectionDetail | null> {
+export function getCollectionDetail(context: DatabaseContext, collectionId: string): CollectionDetail | null {
   const collectionRow = get<Record<string, unknown>>(context, `
     SELECT *
     FROM collections
@@ -241,7 +241,7 @@ export async function getCollectionDetail(context: DatabaseContext, collectionId
   };
 }
 
-export async function searchCatalog(context: DatabaseContext, query: string): Promise<LibrarySearchResult> {
+export function searchCatalog(context: DatabaseContext, query: string): LibrarySearchResult {
   const keyword = `%${query.trim()}%`;
   const albumRows = query.trim()
     ? all<Record<string, unknown>>(context, `
@@ -266,12 +266,11 @@ export async function searchCatalog(context: DatabaseContext, query: string): Pr
         title LIKE ? OR
         COALESCE(displayTitle, '') LIKE ? OR
         artist LIKE ? OR
-        COALESCE(displayArtist, '') LIKE ? OR
-        sourceMeta LIKE ?
+        COALESCE(displayArtist, '') LIKE ?
       )
       ORDER BY title ASC
       LIMIT 30
-    `, [keyword, keyword, keyword, keyword, keyword])
+    `, [keyword, keyword, keyword, keyword])
     : [];
 
   const tracks = trackRows.map(mapTrack);
@@ -347,10 +346,10 @@ export interface AlbumSearchFilters {
   offset?: number;
 }
 
-export async function searchAlbums(
+export function searchAlbums(
   context: DatabaseContext,
   filters: AlbumSearchFilters,
-): Promise<AlbumSearchResult> {
+): AlbumSearchResult {
   const { q, artist, genre, year, seriesId, limit = 20, offset = 0 } = filters;
   const clampedLimit = Math.min(Math.max(1, Number(limit) || 20), 100);
   const safeOffset = Math.max(0, Number(offset) || 0);
@@ -460,10 +459,10 @@ export interface TrackSearchFilters {
   offset?: number;
 }
 
-export async function searchTracks(
+export function searchTracks(
   context: DatabaseContext,
   filters: TrackSearchFilters,
-): Promise<TrackSearchResult> {
+): TrackSearchResult {
   const { q, album, artist, genre, year, seriesId, discNumber, trackNumber, limit = 20, offset = 0 } = filters;
   const clampedLimit = Math.min(Math.max(1, Number(limit) || 20), 100);
   const safeOffset = Math.max(0, Number(offset) || 0);
@@ -572,8 +571,10 @@ export async function searchTracks(
   return { items, total, limit: clampedLimit, offset: safeOffset };
 }
 
-export async function patchTrack(context: DatabaseContext, trackId: string, input: Record<string, unknown>) {
-  const entries = Object.entries(input).filter(([, value]) => value !== undefined);
+const TRACK_PATCHABLE_COLUMNS = new Set(['displayTitle', 'displayArtist', 'hidden']);
+
+export function patchTrack(context: DatabaseContext, trackId: string, input: Record<string, unknown>) {
+  const entries = Object.entries(input).filter(([key, value]) => value !== undefined && TRACK_PATCHABLE_COLUMNS.has(key));
   if (entries.length === 0) {
     return getTrackById(context, trackId);
   }
@@ -588,8 +589,10 @@ export async function patchTrack(context: DatabaseContext, trackId: string, inpu
   return getTrackById(context, trackId);
 }
 
-export async function patchAlbum(context: DatabaseContext, albumId: string, input: Record<string, unknown>) {
-  const entries = Object.entries(input).filter(([, value]) => value !== undefined);
+const ALBUM_PATCHABLE_COLUMNS = new Set(['displayTitle', 'displayArtist', 'hidden']);
+
+export function patchAlbum(context: DatabaseContext, albumId: string, input: Record<string, unknown>) {
+  const entries = Object.entries(input).filter(([key, value]) => value !== undefined && ALBUM_PATCHABLE_COLUMNS.has(key));
   if (entries.length === 0) {
     const row = get<Record<string, unknown>>(context, `SELECT * FROM albums WHERE publicId = ?`, [albumId]);
     return row ? mapAlbum(row) : null;
@@ -606,7 +609,7 @@ export async function patchAlbum(context: DatabaseContext, albumId: string, inpu
   return row ? mapAlbum(row) : null;
 }
 
-export async function createCollection(context: DatabaseContext, collection: {
+export function createCollection(context: DatabaseContext, collection: {
   publicId: string;
   title: string;
   description?: string;
@@ -629,8 +632,10 @@ export async function createCollection(context: DatabaseContext, collection: {
   return row ? mapCollection(row) : null;
 }
 
-export async function patchCollection(context: DatabaseContext, collectionId: string, input: Record<string, unknown>) {
-  const entries = Object.entries(input).filter(([, value]) => value !== undefined);
+const COLLECTION_PATCHABLE_COLUMNS = new Set(['title', 'description', 'status']);
+
+export function patchCollection(context: DatabaseContext, collectionId: string, input: Record<string, unknown>) {
+  const entries = Object.entries(input).filter(([key, value]) => value !== undefined && COLLECTION_PATCHABLE_COLUMNS.has(key));
   if (entries.length === 0) {
     const row = get<Record<string, unknown>>(context, `SELECT * FROM collections WHERE publicId = ?`, [collectionId]);
     return row ? mapCollection(row) : null;
@@ -647,7 +652,7 @@ export async function patchCollection(context: DatabaseContext, collectionId: st
   return row ? mapCollection(row) : null;
 }
 
-export async function addTracksToCollection(context: DatabaseContext, collectionId: string, trackIds: string[]) {
+export function addTracksToCollection(context: DatabaseContext, collectionId: string, trackIds: string[]) {
   const lastRow = get<Record<string, unknown>>(context, `
     SELECT sortOrder
     FROM collectionTracks
@@ -670,7 +675,7 @@ export async function addTracksToCollection(context: DatabaseContext, collection
   return getCollectionDetail(context, collectionId);
 }
 
-export async function listSeries(context: DatabaseContext): Promise<SeriesListItem[]> {
+export function listSeries(context: DatabaseContext): SeriesListItem[] {
   const rows = all<Record<string, unknown>>(context, `
     SELECT
       s.*,
@@ -689,7 +694,7 @@ export async function listSeries(context: DatabaseContext): Promise<SeriesListIt
   }));
 }
 
-export async function getSeriesDetail(context: DatabaseContext, seriesId: string): Promise<SeriesDetail | null> {
+export function getSeriesDetail(context: DatabaseContext, seriesId: string): SeriesDetail | null {
   const seriesRow = get<Record<string, unknown>>(context, `
     SELECT * FROM series WHERE publicId = ?
   `, [seriesId]);

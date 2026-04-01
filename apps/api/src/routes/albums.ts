@@ -9,27 +9,44 @@ import type { FastifyInstance } from 'fastify';
 
 import type { RouteContext } from './types.js';
 
+const SAFE_ID = { type: 'string' as const, pattern: '^[a-zA-Z0-9_-]+$' };
+
 export async function albumRoutes(app: FastifyInstance, { config }: RouteContext) {
-  app.get('/api/albums/search', async (request) => {
+  app.get('/api/albums/search', {
+    schema: {
+      querystring: {
+        type: 'object' as const,
+        properties: {
+          q: { type: 'string' as const },
+          artist: { type: 'string' as const },
+          genre: { type: 'string' as const },
+          year: { type: 'integer' as const, minimum: 0 },
+          seriesId: SAFE_ID,
+          limit: { type: 'integer' as const, minimum: 1, maximum: 100, default: 20 },
+          offset: { type: 'integer' as const, minimum: 0, default: 0 },
+        },
+      },
+    },
+  }, async (request) => {
     const context = await getDatabase(config);
     const { q, artist, genre, year, seriesId, limit, offset } = request.query as {
       q?: string;
       artist?: string;
       genre?: string;
-      year?: string;
+      year?: number;
       seriesId?: string;
-      limit?: string;
-      offset?: string;
+      limit?: number;
+      offset?: number;
     };
 
     const result = await searchAlbums(context, {
       q,
       artist,
       genre,
-      year: year !== undefined ? Number(year) : undefined,
+      year,
       seriesId,
-      limit: limit !== undefined ? Number(limit) : 20,
-      offset: offset !== undefined ? Number(offset) : 0,
+      limit: limit ?? 20,
+      offset: offset ?? 0,
     });
 
     const baseUrl = config.baseUrl ?? `${request.protocol}://${request.headers.host}`;
@@ -47,23 +64,29 @@ export async function albumRoutes(app: FastifyInstance, { config }: RouteContext
     return listAlbums(context);
   });
 
-  app.get('/api/albums/:id', async (request) => {
+  app.get('/api/albums/:id', {
+    schema: { params: { type: 'object' as const, properties: { id: SAFE_ID }, required: ['id'] } },
+  }, async (request) => {
+    const { id } = request.params as { id: string };
     const context = await getDatabase(config);
-    const album = await getAlbumDetail(context, (request.params as { id: string }).id);
+    const album = await getAlbumDetail(context, id);
 
     if (!album) {
-      throw new NotFoundError('Album', (request.params as { id: string }).id);
+      throw new NotFoundError('Album', id);
     }
 
     return album;
   });
 
-  app.get('/api/albums/:id/tracks', async (request) => {
+  app.get('/api/albums/:id/tracks', {
+    schema: { params: { type: 'object' as const, properties: { id: SAFE_ID }, required: ['id'] } },
+  }, async (request) => {
+    const { id } = request.params as { id: string };
     const context = await getDatabase(config);
-    const album = await getAlbumDetail(context, (request.params as { id: string }).id);
+    const album = await getAlbumDetail(context, id);
 
     if (!album) {
-      throw new NotFoundError('Album', (request.params as { id: string }).id);
+      throw new NotFoundError('Album', id);
     }
 
     return album.tracks;

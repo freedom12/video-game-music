@@ -42,7 +42,13 @@ export async function resolveTrackStream(context: DatabaseContext, config: AppCo
   return provider.resolveAudioStream(asset.publicId, asset.extension, asset.relativePath);
 }
 
-export async function resolveCoverAsset(_context: DatabaseContext, config: AppConfig, assetId: string): Promise<StreamResolution | null> {
+const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
+export async function resolveCoverAsset(config: AppConfig, assetId: string): Promise<StreamResolution | null> {
+  if (!SAFE_ID_PATTERN.test(assetId)) {
+    return null;
+  }
+
   const coversDir = path.join(config.mediaCacheDir, 'covers');
 
   for (const ext of ['.png', '.jpg', '.jpeg', '.webp'] as const) {

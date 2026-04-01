@@ -19,7 +19,7 @@ function isAppError(error: unknown): error is AppError {
     error != null
     && typeof error === 'object'
     && '__appError' in error
-    && (error as any).__appError === true
+    && (error as Record<string, unknown>).__appError === true
   );
 }
 
@@ -77,7 +77,16 @@ export async function createApp() {
   // --- System routes ---
   app.get('/api/health', async () => ({ ok: true }));
   app.get('/api/media-source', async () => ({ source: config.mediaSource }));
-  app.get('/api/search', async (request) => {
+  app.get('/api/search', {
+    schema: {
+      querystring: {
+        type: 'object' as const,
+        properties: {
+          q: { type: 'string' as const, default: '' },
+        },
+      },
+    },
+  }, async (request) => {
     const context = await getDatabase(config);
     const { q = '' } = request.query as { q?: string };
     return searchCatalog(context, q);

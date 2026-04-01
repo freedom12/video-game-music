@@ -12,9 +12,12 @@ export class CosStorageProvider implements StorageProvider {
     private readonly secretId?: string,
     private readonly secretKey?: string,
   ) {
+    if (!secretId || !secretKey) {
+      throw new Error('COS credentials (secretId, secretKey) are required');
+    }
     this.client = new COS({
-      SecretId: secretId ?? '',
-      SecretKey: secretKey ?? '',
+      SecretId: secretId,
+      SecretKey: secretKey,
     });
   }
 
