@@ -1,15 +1,11 @@
 export type CollectionStatus = 'draft' | 'published';
 
-// --- Generic Pagination ---
-
 export interface PaginatedResult<T> {
   items: T[];
   total: number;
   limit: number;
   offset: number;
 }
-
-// --- List / Detail DTOs ---
 
 export interface AlbumListItem {
   publicId: string;
@@ -69,8 +65,6 @@ export interface SeriesDetail extends Omit<SeriesListItem, 'albumCount'> {
   albums: AlbumListItem[];
 }
 
-// --- Search DTOs ---
-
 export interface LibrarySearchResult {
   albums: AlbumListItem[];
   tracks: Array<TrackListItem & { albumId?: string; albumTitle?: string }>;
@@ -92,8 +86,6 @@ export interface TrackSearchItem extends TrackListItem {
 }
 
 export type TrackSearchResult = PaginatedResult<TrackSearchItem>;
-
-// --- Similarity ---
 
 export interface SimilarTrack {
   publicId: string;
