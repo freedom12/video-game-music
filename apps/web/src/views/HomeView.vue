@@ -4,14 +4,14 @@ import { onMounted, ref } from 'vue'
 
 import type { AlbumListItem } from '@vgm/shared'
 
-import { fetchAlbums, fetchCollections, fetchSeries, type CollectionSummary, type SeriesListItem } from '../api/client'
+import { fetchAlbums, fetchCollections, fetchSeries, type CollectionListItem, type SeriesListItem } from '../api/client'
 import AlbumCard from '../components/AlbumCard.vue'
 import CollectionCard from '../components/CollectionCard.vue'
 import SeriesCard from '../components/SeriesCard.vue'
 
 const loading = ref(true)
 const albums = ref<AlbumListItem[]>([])
-const collections = ref<CollectionSummary[]>([])
+const collections = ref<CollectionListItem[]>([])
 const seriesList = ref<SeriesListItem[]>([])
 const loadError = ref('')
 const activeTab = ref('series')

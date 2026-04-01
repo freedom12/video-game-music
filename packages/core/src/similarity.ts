@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import type { SimilarTrackItem } from '@vgm/shared';
+import type { SimilarTrack } from '@vgm/shared';
 
 import { all, get, prepare, run } from './db.js';
 import type { DatabaseContext } from './db.js';
@@ -237,7 +237,7 @@ export function findSimilarTracks(
   context: DatabaseContext,
   query: AudioFeatureVectors,
   topK = 20,
-): SimilarTrackItem[] {
+): SimilarTrack[] {
   const rows = all<Record<string, unknown>>(
     context,
     `SELECT af.mediaAssetId, af.chromaVector, af.mfccVector,
@@ -286,7 +286,7 @@ export function findSimilarTracks(
   const topItems = scored.slice(0, topK);
 
   // Enrich with track info
-  const results: SimilarTrackItem[] = [];
+  const results: SimilarTrack[] = [];
   for (const item of topItems) {
     const row = get<Record<string, unknown>>(context, `
       SELECT t.publicId, t.title, t.artist, t.durationSeconds,
@@ -326,7 +326,7 @@ export async function findSimilarByFile(
   context: DatabaseContext,
   filePath: string,
   topK = 20,
-): Promise<SimilarTrackItem[]> {
+): Promise<SimilarTrack[]> {
   const features = await extractAudioFeatures(filePath);
   return findSimilarTracks(context, features, topK);
 }

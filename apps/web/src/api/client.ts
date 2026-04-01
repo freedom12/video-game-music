@@ -4,15 +4,15 @@ import type {
   AlbumDetail,
   AlbumListItem,
   CollectionDetail,
-  CollectionSummary,
-  SearchResult,
+  CollectionListItem,
+  LibrarySearchResult,
   SeriesDetail,
   SeriesListItem,
-  SimilarTrackItem,
+  SimilarTrack,
   TrackRecord,
 } from '@vgm/shared'
 
-export type { CollectionSummary, SeriesListItem, SeriesDetail }
+export type { CollectionListItem, SeriesListItem, SeriesDetail }
 
 const api = axios.create({
   baseURL: '/api',
@@ -39,7 +39,7 @@ export async function fetchTrack(id: string) {
 }
 
 export async function fetchCollections() {
-  const { data } = await api.get<CollectionSummary[]>('/collections')
+  const { data } = await api.get<CollectionListItem[]>('/collections')
   return data
 }
 
@@ -49,7 +49,7 @@ export async function fetchCollection(id: string) {
 }
 
 export async function searchCatalog(query: string) {
-  const { data } = await api.get<SearchResult>('/search', {
+  const { data } = await api.get<LibrarySearchResult>('/search', {
     params: { q: query },
   })
   return data
@@ -65,7 +65,7 @@ export async function fetchSeriesDetail(id: string) {
   return data
 }
 
-export interface SimilarTrackItemResponse extends SimilarTrackItem {
+export interface SimilarTrackItemResponse extends SimilarTrack {
   streamUrl: string
   coverUrl?: string
 }

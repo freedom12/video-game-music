@@ -2,11 +2,11 @@
 import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 
-import { fetchCollections, type CollectionSummary } from '../api/client'
+import { fetchCollections, type CollectionListItem } from '../api/client'
 import CollectionCard from '../components/CollectionCard.vue'
 
 const loading = ref(true)
-const collections = ref<CollectionSummary[]>([])
+const collections = ref<CollectionListItem[]>([])
 
 onMounted(async () => {
   try {

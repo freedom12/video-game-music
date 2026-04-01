@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { CollectionSummary } from '../api/client'
+import type { CollectionListItem } from '../api/client'
 
 defineProps<{
-  collection: CollectionSummary
+  collection: CollectionListItem
 }>()
 </script>
 

@@ -103,6 +103,17 @@ export interface SeriesAlbumRecord {
   createdAt: string;
 }
 
+// --- Generic Pagination ---
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// --- List / Detail DTOs ---
+
 export interface AlbumListItem {
   publicId: string;
   title: string;
@@ -128,11 +139,15 @@ export interface AlbumDetail extends AlbumListItem {
   tracks: TrackListItem[];
 }
 
-export interface CollectionDetail {
+export interface CollectionListItem {
   publicId: string;
   title: string;
   description?: string;
   status: CollectionStatus;
+  trackCount: number;
+}
+
+export interface CollectionDetail extends CollectionListItem {
   tracks: Array<TrackListItem & { albumId?: string; albumTitle?: string }>;
 }
 
@@ -143,46 +158,25 @@ export interface SeriesListItem {
   albumCount: number;
 }
 
-export interface SeriesDetail {
-  publicId: string;
-  name: string;
-  sortTitle: string;
+export interface SeriesDetail extends Omit<SeriesListItem, 'albumCount'> {
   albums: AlbumListItem[];
 }
 
-export interface SearchResult {
+// --- Search DTOs ---
+
+export interface LibrarySearchResult {
   albums: AlbumListItem[];
   tracks: Array<TrackListItem & { albumId?: string; albumTitle?: string }>;
 }
 
-export interface AlbumSearchItem {
-  publicId: string;
-  title: string;
-  albumArtist: string;
-  year?: number;
-  trackCount: number;
-  discCount: number;
+export interface AlbumSearchItem extends AlbumListItem {
   seriesId?: string;
   seriesName?: string;
-  coverUrl?: string;
 }
 
-export interface AlbumsSearchResult {
-  items: AlbumSearchItem[];
-  total: number;
-  limit: number;
-  offset: number;
-}
+export type AlbumSearchResult = PaginatedResult<AlbumSearchItem>;
 
-export interface TrackSearchItem {
-  publicId: string;
-  title: string;
-  artist: string;
-  durationSeconds: number;
-  trackNumber: number;
-  discNumber: number;
-  discTitle?: string;
-  mediaAssetId: string;
+export interface TrackSearchItem extends TrackListItem {
   albumId?: string;
   albumTitle?: string;
   albumArtist?: string;
@@ -190,12 +184,9 @@ export interface TrackSearchItem {
   genre?: string;
 }
 
-export interface TracksSearchResult {
-  items: TrackSearchItem[];
-  total: number;
-  limit: number;
-  offset: number;
-}
+export type TrackSearchResult = PaginatedResult<TrackSearchItem>;
+
+// --- Library / Import ---
 
 export interface LibraryScanChange {
   relativePath: string;
@@ -244,36 +235,18 @@ export interface SyncOptions {
 // --- API Response DTOs ---
 // These types represent the shapes returned by API endpoints, including computed URL fields.
 
-export interface CollectionSummary {
-  publicId: string;
-  title: string;
-  description?: string;
-  status: CollectionStatus;
-  trackCount: number;
-}
-
-export interface TrackSearchItemResponse extends TrackSearchItem {
+export interface TrackResponseItem extends TrackSearchItem {
   streamUrl: string;
   coverUrl?: string;
 }
 
-export interface TracksSearchResponse {
-  items: TrackSearchItemResponse[];
-  total: number;
-  limit: number;
-  offset: number;
-}
+export type TrackSearchResponse = PaginatedResult<TrackResponseItem>;
 
-export interface AlbumSearchItemResponse extends AlbumSearchItem {
+export interface AlbumResponseItem extends AlbumSearchItem {
   coverUrl?: string;
 }
 
-export interface AlbumsSearchResponse {
-  items: AlbumSearchItemResponse[];
-  total: number;
-  limit: number;
-  offset: number;
-}
+export type AlbumSearchResponse = PaginatedResult<AlbumResponseItem>;
 
 export interface ApiErrorResponse {
   code: string;
@@ -281,7 +254,7 @@ export interface ApiErrorResponse {
   details?: unknown;
 }
 
-export interface SimilarTrackItem {
+export interface SimilarTrack {
   publicId: string;
   title: string;
   artist: string;
@@ -294,3 +267,23 @@ export interface SimilarTrackItem {
   melodySimilarity: number;
   overallSimilarity: number;
 }
+
+// --- Backward-compatible aliases (deprecated) ---
+/** @deprecated Use CollectionListItem */
+export type CollectionSummary = CollectionListItem;
+/** @deprecated Use AlbumSearchResult */
+export type AlbumsSearchResult = AlbumSearchResult;
+/** @deprecated Use TrackSearchResult */
+export type TracksSearchResult = TrackSearchResult;
+/** @deprecated Use LibrarySearchResult */
+export type SearchResult = LibrarySearchResult;
+/** @deprecated Use TrackResponseItem */
+export type TrackSearchItemResponse = TrackResponseItem;
+/** @deprecated Use AlbumResponseItem */
+export type AlbumSearchItemResponse = AlbumResponseItem;
+/** @deprecated Use AlbumSearchResponse */
+export type AlbumsSearchResponse = AlbumSearchResponse;
+/** @deprecated Use TrackSearchResponse */
+export type TracksSearchResponse = TrackSearchResponse;
+/** @deprecated Use SimilarTrack */
+export type SimilarTrackItem = SimilarTrack;

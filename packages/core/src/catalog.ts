@@ -2,14 +2,14 @@ import type {
   AlbumDetail,
   AlbumListItem,
   AlbumSearchItem,
-  AlbumsSearchResult,
+  AlbumSearchResult,
   CollectionDetail,
-  SearchResult,
+  LibrarySearchResult,
   SeriesDetail,
   SeriesListItem,
   TrackListItem,
   TrackSearchItem,
-  TracksSearchResult,
+  TrackSearchResult,
 } from '@vgm/shared';
 
 import {
@@ -203,6 +203,7 @@ export async function getCollectionDetail(context: DatabaseContext, collectionId
     title: collection.title,
     description: collection.description,
     status: collection.status,
+    trackCount: rows.length,
     tracks: rows.map((row) => {
       const track = mapTrack(row);
       return {
@@ -224,7 +225,7 @@ export async function getCollectionDetail(context: DatabaseContext, collectionId
   };
 }
 
-export async function searchCatalog(context: DatabaseContext, query: string): Promise<SearchResult> {
+export async function searchCatalog(context: DatabaseContext, query: string): Promise<LibrarySearchResult> {
   const keyword = `%${query.trim()}%`;
   const albumRows = query.trim()
     ? all<Record<string, unknown>>(context, `
@@ -333,7 +334,7 @@ export interface AlbumSearchFilters {
 export async function searchAlbums(
   context: DatabaseContext,
   filters: AlbumSearchFilters,
-): Promise<AlbumsSearchResult> {
+): Promise<AlbumSearchResult> {
   const { q, artist, genre, year, seriesId, limit = 20, offset = 0 } = filters;
   const clampedLimit = Math.min(Math.max(1, Number(limit) || 20), 100);
   const safeOffset = Math.max(0, Number(offset) || 0);
@@ -446,7 +447,7 @@ export interface TrackSearchFilters {
 export async function searchTracks(
   context: DatabaseContext,
   filters: TrackSearchFilters,
-): Promise<TracksSearchResult> {
+): Promise<TrackSearchResult> {
   const { q, album, artist, genre, year, seriesId, discNumber, trackNumber, limit = 20, offset = 0 } = filters;
   const clampedLimit = Math.min(Math.max(1, Number(limit) || 20), 100);
   const safeOffset = Math.max(0, Number(offset) || 0);
