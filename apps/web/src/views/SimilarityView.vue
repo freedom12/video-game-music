@@ -130,7 +130,8 @@ function scorePercent(score: number) {
         <span class="sim-col-index">#</span>
         <span class="sim-col-title">曲目</span>
         <span class="sim-col-album">专辑</span>
-        <span class="sim-col-score">相似度</span>
+        <span class="sim-col-score">旋律匹配</span>
+        <span class="sim-col-score">整体匹配</span>
         <span class="sim-col-duration">时长</span>
       </div>
 
@@ -168,9 +169,15 @@ function scorePercent(score: number) {
         </span>
         <span class="sim-col-score">
           <span class="sim-score-bar">
-            <span class="sim-score-fill" :style="{ width: scorePercent(item.similarityScore) }" />
+            <span class="sim-score-fill melody" :style="{ width: scorePercent(item.melodySimilarity) }" />
           </span>
-          <span class="sim-score-text">{{ scorePercent(item.similarityScore) }}</span>
+          <span class="sim-score-text">{{ scorePercent(item.melodySimilarity) }}</span>
+        </span>
+        <span class="sim-col-score">
+          <span class="sim-score-bar">
+            <span class="sim-score-fill overall" :style="{ width: scorePercent(item.overallSimilarity) }" />
+          </span>
+          <span class="sim-score-text">{{ scorePercent(item.overallSimilarity) }}</span>
         </span>
         <span class="sim-col-duration">{{ formatDuration(item.durationSeconds) }}</span>
       </button>
@@ -284,7 +291,7 @@ function scorePercent(score: number) {
 .sim-col-index  { width: 40px; flex-shrink: 0; text-align: center; font-size: 0.8rem; color: var(--text-3); }
 .sim-col-title  { flex: 3; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .sim-col-album  { flex: 2; min-width: 0; font-size: 0.82rem; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sim-col-score  { width: 130px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.sim-col-score  { width: 120px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
 .sim-col-duration { width: 60px; flex-shrink: 0; text-align: right; font-size: 0.82rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
 .sim-title-text {
@@ -321,9 +328,16 @@ function scorePercent(score: number) {
 .sim-score-fill {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
   border-radius: 2px;
   transition: width 0.3s ease;
+}
+
+.sim-score-fill.melody {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.sim-score-fill.overall {
+  background: linear-gradient(90deg, #34d399, #06b6d4);
 }
 
 .sim-score-text {

@@ -252,7 +252,7 @@ export function findSimilarTracks(
   const qChromaStd = zNormalize(query.chromaStdVector);
   const qMfccStd = zNormalize(mfccWithoutEnergy(query.mfccStdVector));
 
-  const scored: Array<{ mediaAssetId: string; score: number }> = [];
+  const scored: Array<{ mediaAssetId: string; score: number; melodySim: number; overallSim: number }> = [];
   for (const row of rows) {
     const chromaMean = zNormalize(blobToFloat32(row.chromaVector as Buffer));
     const mfccMean = zNormalize(mfccWithoutEnergy(blobToFloat32(row.mfccVector as Buffer)));
@@ -260,20 +260,25 @@ export function findSimilarTracks(
     const mfccMeanSim = cosineSimilarity(qMfccMean, mfccMean);
 
     let raw: number;
+    let melodySim: number;
     const hasStd = row.chromaStdVector != null && row.mfccStdVector != null;
     if (hasStd) {
       const chromaStd = zNormalize(blobToFloat32(row.chromaStdVector as Buffer));
       const mfccStd = zNormalize(mfccWithoutEnergy(blobToFloat32(row.mfccStdVector as Buffer)));
       const chromaStdSim = cosineSimilarity(qChromaStd, chromaStd);
       const mfccStdSim = cosineSimilarity(qMfccStd, mfccStd);
+      melodySim = 0.7 * chromaMeanSim + 0.3 * chromaStdSim;
       raw = 0.35 * chromaMeanSim + 0.15 * chromaStdSim + 0.30 * mfccMeanSim + 0.20 * mfccStdSim;
     } else {
       // Legacy rows without std vectors — fall back to mean-only
+      melodySim = chromaMeanSim;
       raw = 0.6 * chromaMeanSim + 0.4 * mfccMeanSim;
     }
     scored.push({
       mediaAssetId: String(row.mediaAssetId),
       score: Math.max(0, raw),
+      melodySim: Math.max(0, melodySim),
+      overallSim: Math.max(0, raw),
     });
   }
 
@@ -306,6 +311,8 @@ export function findSimilarTracks(
       albumTitle: typeof row.albumTitle === 'string' ? row.albumTitle : undefined,
       albumArtist: typeof row.albumArtist === 'string' ? row.albumArtist : undefined,
       similarityScore: Math.round(item.score * 10000) / 10000,
+      melodySimilarity: Math.round(item.melodySim * 10000) / 10000,
+      overallSimilarity: Math.round(item.overallSim * 10000) / 10000,
     });
   }
 

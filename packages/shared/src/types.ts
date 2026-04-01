@@ -291,4 +291,6 @@ export interface SimilarTrackItem {
   albumTitle?: string;
   albumArtist?: string;
   similarityScore: number;
+  melodySimilarity: number;
+  overallSimilarity: number;
 }
