@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { all, cleanLibrary, closeDatabase, commitLibrary, extractAudioFeatures, getDatabase, hasAudioFeature, initLibrary, loadConfig, loadWorkspaceEnv, transaction, upsertAudioFeatureBatch } from '@vgm/core';
+import { all, cleanLibrary, closeDatabase, updateLibrary, extractAudioFeatures, getDatabase, hasAudioFeature, initLibrary, loadConfig, loadWorkspaceEnv, transaction, upsertAudioFeatureBatch } from '@vgm/core';
 import type { AudioFeatureVectors } from '@vgm/core';
 
 loadWorkspaceEnv(process.cwd());
@@ -26,7 +26,7 @@ async function main() {
     const summary = await cleanLibrary(context, config);
     console.log(JSON.stringify(summary, null, 2));
   } else {
-    const summary = await commitLibrary(context, configWithProgress);
+    const summary = await updateLibrary(context, configWithProgress);
     console.log(JSON.stringify(summary, null, 2));
   }
 }

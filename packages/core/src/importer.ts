@@ -214,7 +214,7 @@ export async function scanLibrary(context: DatabaseContext, options: ImportOptio
   return { summary, candidates, existingAssets, existingTracks };
 }
 
-export async function commitLibrary(context: DatabaseContext, config: AppConfig) {
+export async function updateLibrary(context: DatabaseContext, config: AppConfig) {
   const startedAt = Date.now();
   await ensureCacheDirs(config.mediaCacheDir);
   const scan = await scanLibrary(context, {
@@ -976,5 +976,5 @@ export async function initLibrary(context: DatabaseContext, config: AppConfig) {
   await fs.rm(coversDir, { recursive: true, force: true });
   await fs.mkdir(coversDir, { recursive: true });
 
-  return commitLibrary(context, config);
+  return updateLibrary(context, config);
 }
