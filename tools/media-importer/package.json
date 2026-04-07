@@ -8,7 +8,7 @@
     "update": "tsx src/index.ts update",
     "clean": "tsx src/index.ts clean",
     "build": "tsup",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
