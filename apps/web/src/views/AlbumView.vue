@@ -46,7 +46,9 @@ watch(() => route.params.id, () => { void loadAlbum() })
 onMounted(() => { void loadAlbum() })
 
 const coverUrl = computed(() => (
-  `/api/assets/${album.value?.publicId}/cover`
+  // `/api/assets/${album.value?.publicId}/cover`
+  //todo 临时使用前端资源
+  `/covers/${album.value?.publicId}.png`
 ))
 </script>
 

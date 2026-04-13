@@ -23,7 +23,7 @@ export const usePlayerStore = defineStore('player', () => {
 
   const activeCoverUrl = computed(() =>
     engine.embeddedCoverUrl.value
-    ?? (coverId.value ? `/api/assets/${coverId.value}/cover` : undefined),
+    ?? (coverId.value ? `/covers/${coverId.value}.png` : undefined),
   )
 
   function bindAudio(element: HTMLAudioElement) {

@@ -49,18 +49,19 @@ export function useAudioEngine() {
     el.src = `/api/tracks/${trackId}/stream`
     await el.play()
 
-    const seq = ++coverFetchSeq
-    void (async () => {
-      try {
-        const resp = await fetch(`/api/tracks/${trackId}/embedded-cover`)
-        if (seq !== coverFetchSeq || !resp.ok) return
-        const blob = await resp.blob()
-        if (seq !== coverFetchSeq) return
-        if (embeddedCoverUrl.value?.startsWith('blob:')) URL.revokeObjectURL(embeddedCoverUrl.value)
-        embeddedCoverUrl.value = URL.createObjectURL(blob)
-      }
-      catch { /* ignore */ }
-    })()
+    // todo 考虑服务器负担暂时不请求每首曲目的内置封面资源
+    // const seq = ++coverFetchSeq
+    // void (async () => {
+    //   try {
+    //     const resp = await fetch(`/api/tracks/${trackId}/embedded-cover`)
+    //     if (seq !== coverFetchSeq || !resp.ok) return
+    //     const blob = await resp.blob()
+    //     if (seq !== coverFetchSeq) return
+    //     if (embeddedCoverUrl.value?.startsWith('blob:')) URL.revokeObjectURL(embeddedCoverUrl.value)
+    //     embeddedCoverUrl.value = URL.createObjectURL(blob)
+    //   }
+    //   catch { /* ignore */ }
+    // })()
   }
 
   async function toggle() {
