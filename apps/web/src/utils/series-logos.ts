@@ -21,6 +21,7 @@ export const SERIES_LOGO_MAP: Record<string, string> = {
   'Octopath Traveler': '/series-logos/octopath-traveler.png',
   'Pikmin':            '/series-logos/pikmin.png',
   'Pokémon':           '/series-logos/pokemon.png',
+  'Rhythm Heaven':     '/series-logos/rhythm-heaven.png',
   'Splatoon':          '/series-logos/splatoon.png',
   'Super Mario':       '/series-logos/super-mario.png',
   'Super Smash Bros':  '/series-logos/super-smash-bros.png',
