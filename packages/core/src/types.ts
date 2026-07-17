@@ -127,7 +127,7 @@ export interface LibraryScanSummary {
 }
 
 export interface ImportProgressEvent {
-  phase: 'discover' | 'metadata' | 'write' | 'features' | 'rebuild' | 'done';
+  phase: 'discover' | 'metadata' | 'write' | 'features' | 'rebuild' | 'clean' | 'done';
   message: string;
   processed?: number;
   total?: number;

@@ -123,9 +123,10 @@ export function getAlbumDetail(context: DatabaseContext, albumId: string): Album
 /** Internal: returns full TrackRecord for core-internal use (e.g. media resolution). */
 export function getTrackRecordById(context: DatabaseContext, trackId: string) {
   const row = get<Record<string, unknown>>(context, `
-    SELECT *
-    FROM tracks
-    WHERE publicId = ? AND hidden = 0
+    SELECT t.*
+    FROM tracks t
+    INNER JOIN mediaAssets ma ON ma.publicId = t.mediaAssetId AND ma.presenceStatus = 'active'
+    WHERE t.publicId = ? AND t.hidden = 0
   `, [trackId]);
 
   return row ? mapTrack(row) : null;
@@ -260,15 +261,16 @@ export function searchCatalog(context: DatabaseContext, query: string): LibraryS
 
   const trackRows = query.trim()
     ? all<Record<string, unknown>>(context, `
-      SELECT *
-      FROM tracks
-      WHERE hidden = 0 AND (
-        title LIKE ? OR
-        COALESCE(displayTitle, '') LIKE ? OR
-        artist LIKE ? OR
-        COALESCE(displayArtist, '') LIKE ?
+      SELECT t.*
+      FROM tracks t
+      INNER JOIN mediaAssets ma ON ma.publicId = t.mediaAssetId AND ma.presenceStatus = 'active'
+      WHERE t.hidden = 0 AND (
+        t.title LIKE ? OR
+        COALESCE(t.displayTitle, '') LIKE ? OR
+        t.artist LIKE ? OR
+        COALESCE(t.displayArtist, '') LIKE ?
       )
-      ORDER BY title ASC
+      ORDER BY t.title ASC
       LIMIT 30
     `, [keyword, keyword, keyword, keyword])
     : [];
@@ -469,6 +471,7 @@ export function searchTracks(
 
   // Build dynamic JOIN / WHERE clauses
   const joinParts: string[] = [
+    'INNER JOIN mediaAssets ma ON ma.publicId = t.mediaAssetId AND ma.presenceStatus = \'active\'',
     'LEFT JOIN albumTracks at ON at.trackId = t.publicId',
     'LEFT JOIN albums a ON a.publicId = at.albumId AND a.hidden = 0',
   ];

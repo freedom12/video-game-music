@@ -101,9 +101,11 @@ export async function scanLibrary(context: DatabaseContext, options: ImportOptio
   const existingByHash = new Map(existingAssets.map((asset) => [asset.contentHash, asset]));
   const existingTracks = all<Record<string, unknown>>(context, 'SELECT * FROM tracks').map(mapTrack);
   const existingTrackByAssetId = new Map(existingTracks.map((t) => [t.mediaAssetId, t]));
-  // Cache for skipping metadata re-parse when file hasn't changed on disk
+  // Cache for skipping metadata re-parse when file hasn't changed on disk.
+  // Only index ACTIVE assets — missing ones may share a path with a different file.
   const existingByPath = new Map(
     existingAssets.flatMap((asset) => {
+      if (asset.presenceStatus !== 'active') return [];
       const track = existingTrackByAssetId.get(asset.publicId);
       return track ? [[asset.relativePath, { asset, sourceMeta: track.sourceMeta }] as const] : [];
     }),
@@ -482,6 +484,20 @@ export async function updateLibrary(context: DatabaseContext, config: AppConfig)
 
   await rebuildAlbums(context, config);
 
+  // Phase 6: Clean up orphaned tracks / missing assets
+  reportProgress(config, {
+    phase: 'clean',
+    message: '正在清理孤立数据...',
+    elapsedMs: elapsed(ctx),
+  });
+
+  const cleanSummary = await cleanLibrary(context, config);
+  reportProgress(config, {
+    phase: 'clean',
+    message: `清理完成：移除 ${cleanSummary.removedMissingAssets} 个缺失资产，${cleanSummary.removedOrphanedTracks} 个孤立曲目`,
+    elapsedMs: elapsed(ctx),
+  });
+
   reportProgress(config, {
     phase: 'done',
     message: `导入完成：${scan.summary.totals.files} 个文件`,
@@ -683,6 +699,9 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
   const insertSeriesStmt = prepare(context, `
     INSERT INTO series (publicId, name, sortTitle, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(name) DO UPDATE SET
+      sortTitle = excluded.sortTitle,
+      updatedAt = excluded.updatedAt
   `);
 
   const insertSeriesAlbumStmt = prepare(context, `
@@ -691,10 +710,11 @@ async function rebuildAlbums(context: DatabaseContext, options: Pick<AppConfig, 
   `);
 
   transaction(context, () => {
-    run(context, `DELETE FROM seriesAlbums`);
-    run(context, `DELETE FROM series`);
-    run(context, `DELETE FROM albumTracks`);
+    // Only remove album-track links for system-generated albums (preserve user-created ones)
+    run(context, `DELETE FROM albumTracks WHERE albumId IN (SELECT publicId FROM albums WHERE isSystemGenerated = 1)`);
     run(context, `DELETE FROM albums WHERE isSystemGenerated = 1`);
+    // Series–album links are fully rebuilt from directory structure each update
+    run(context, `DELETE FROM seriesAlbums`);
 
     for (const album of albumDocs) {
       insertAlbumStmt.run(
@@ -894,52 +914,90 @@ async function ensureCacheDirs(cacheDir: string) {
 }
 
 /**
- * Compute a SHA-1 hash of the audio data only (skipping metadata/tags).
- * Uses music-metadata to find where the audio stream starts,
- * then hashes from that offset to the end of the audio data.
- * Falls back to hashing the entire file if offset detection fails.
+ * Compute a SHA-1 hash of **audio data only**, skipping all metadata/tags.
+ *
+ * Strategy per format:
+ *   MP3  – skip ID3v2 at start + ID3v1 at end (128 bytes tagged "TAG")
+ *   FLAC – skip metadata blocks (parse "fLaC" marker → iterate blocks)
+ *   OGG / M4A / WAV / other – hash entire file (these formats either have
+ *          complex interleaved structures or rarely carry editable tags)
+ *
+ * Falls back to full-file hash on any parse error.
  */
 export async function computeAudioHash(absolutePath: string): Promise<string> {
-  let audioOffset = 0;
-  let audioEnd: number | undefined;
-  try {
-    const metadata = await parseFile(absolutePath, { duration: false, skipCovers: true });
-    const native = metadata.format;
-    // Use the codec header offset if available, otherwise 0
-    if (native.tagTypes) {
-      // For formats with leading tags (ID3v2 in MP3), the audioOffset
-      // marks where audio frames actually start.
-      // music-metadata exposes this via an internal path, but a reliable
-      // approach is to hash from after any ID3v2 header.
-      const stat = await fs.stat(absolutePath);
-      const totalSize = stat.size;
+  const stat = await fs.stat(absolutePath);
+  const totalSize = stat.size;
+  const ext = path.extname(absolutePath).toLowerCase();
 
-      // Detect ID3v2 header size for MP3 files
-      const ext = path.extname(absolutePath).toLowerCase();
-      if (ext === '.mp3') {
-        const fd = await fs.open(absolutePath, 'r');
-        try {
-          const header = Buffer.alloc(10);
-          await fd.read(header, 0, 10, 0);
-          // ID3v2 header: "ID3" followed by version, flags, and 4 bytes syncsafe size
-          if (header[0] === 0x49 && header[1] === 0x44 && header[2] === 0x33) {
-            const size = (header[6]! << 21) | (header[7]! << 14) | (header[8]! << 7) | header[9]!;
-            audioOffset = 10 + size;
-          }
-        } finally {
-          await fd.close();
+  let audioStart = 0;
+  let audioEnd = totalSize;
+
+  try {
+    if (ext === '.mp3') {
+      // ── MP3: skip ID3v2 (start) + ID3v1 (end) ──
+      const fd = await fs.open(absolutePath, 'r');
+      try {
+        // ID3v2 at start
+        const head = Buffer.alloc(10);
+        await fd.read(head, 0, 10, 0);
+        if (head[0] === 0x49 && head[1] === 0x44 && head[2] === 0x33) {
+          // syncsafe int: only 7 bits per byte used
+          const id3v2Size = 10 + ((head[6]! << 21) | (head[7]! << 14) | (head[8]! << 7) | head[9]!);
+          if (id3v2Size < totalSize) audioStart = id3v2Size;
         }
+
+        // ID3v1 at end (last 128 bytes, starts with "TAG")
+        if (totalSize > 128) {
+          const tail = Buffer.alloc(3);
+          await fd.read(tail, 0, 3, totalSize - 128);
+          if (tail[0] === 0x54 && tail[1] === 0x41 && tail[2] === 0x47) {
+            audioEnd = totalSize - 128;
+          }
+        }
+      } finally {
+        await fd.close();
       }
-      audioEnd = totalSize;
+    } else if (ext === '.flac') {
+      // ── FLAC: skip metadata blocks ──
+      // Layout: "fLaC" (4B) → STREAMINFO block → [other metadata blocks] → audio frames
+      // Each metadata block: 1B header (1bit last-flag + 7bit type) + 3B size (big-endian)
+      const fd = await fs.open(absolutePath, 'r');
+      try {
+        const marker = Buffer.alloc(4);
+        await fd.read(marker, 0, 4, 0);
+        if (marker[0] === 0x66 && marker[1] === 0x4C && marker[2] === 0x61 && marker[3] === 0x43) {
+          let offset = 4;
+          let isLast = false;
+          while (!isLast && offset + 4 <= totalSize) {
+            const bh = Buffer.alloc(4);
+            await fd.read(bh, 0, 4, offset);
+            isLast = (bh[0]! & 0x80) !== 0;
+            const blockSize = (bh[1]! << 16) | (bh[2]! << 8) | bh[3]!;
+            offset += 4 + blockSize;
+          }
+          if (offset < totalSize) audioStart = offset;
+        }
+      } finally {
+        await fd.close();
+      }
     }
+    // OGG / M4A / WAV / other: hash whole file (acceptable fallback)
   } catch {
-    // Fall back to full file hash
+    // Fall back to full-file hash on any error
+    audioStart = 0;
+    audioEnd = totalSize;
+  }
+
+  // Safety: ensure valid range
+  if (audioStart >= audioEnd || audioStart < 0 || audioEnd > totalSize) {
+    audioStart = 0;
+    audioEnd = totalSize;
   }
 
   const hash = createHash('sha1');
   const stream = createReadStream(absolutePath, {
-    start: audioOffset,
-    ...(audioEnd !== undefined ? { end: audioEnd - 1 } : {}),
+    start: audioStart,
+    end: audioEnd - 1,
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -980,6 +1038,8 @@ export async function cleanLibrary(context: DatabaseContext, config: AppConfig):
       WHERE mediaAssetId IN (SELECT publicId FROM mediaAssets WHERE presenceStatus = 'missing')
     )`);
     run(context, `DELETE FROM tracks
+      WHERE mediaAssetId IN (SELECT publicId FROM mediaAssets WHERE presenceStatus = 'missing')`);
+    run(context, `DELETE FROM audioFeatures
       WHERE mediaAssetId IN (SELECT publicId FROM mediaAssets WHERE presenceStatus = 'missing')`);
     run(context, `DELETE FROM mediaAssets WHERE presenceStatus = 'missing'`);
   });
